@@ -170,6 +170,7 @@ jobs:
 
       - name: Run Cross-Language Equivalence Audit
         run: |
+          set -o pipefail
           python tests/verify_equivalence.py 2>&1 | tee equivalence_report.txt
 
       - name: Upload Equivalence Report
