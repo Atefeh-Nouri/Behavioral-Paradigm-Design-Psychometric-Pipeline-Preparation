@@ -4,13 +4,13 @@ Asserts that config.yaml and pipeline_config.yaml conform to expected models and
 """
 
 import os
+import sys
 import pytest
 import yaml
 
 try:
     from paradigms.psychopy.config_loader import load_experiment_config, ExperimentConfig
 except ImportError:
-    import sys
     sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
     from paradigms.psychopy.config_loader import load_experiment_config, ExperimentConfig
 
@@ -30,7 +30,11 @@ def test_experiment_config_validity():
     assert cfg["timing"]["response_window_ms"] == 1000.0
     assert cfg["timing"]["anticipation_threshold_ms"] == 150.0
     assert cfg["design"]["total_experimental_trials"] == 400
-    assert cfg["design"]["block_distribution"]["ax_count"] == 70
+
+    # Handles both 'ax_count' and legacy 'ax'
+    block_dist = cfg["design"]["block_distribution"]
+    ax_val = block_dist.get("ax_count", block_dist.get("ax"))
+    assert ax_val == 70
 
 
 def test_pipeline_config_validity():

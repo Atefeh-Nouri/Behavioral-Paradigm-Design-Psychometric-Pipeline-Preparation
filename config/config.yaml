@@ -5,9 +5,12 @@ environment:
   screen_number: 0
   fullscreen: true
   window_resolution: [1920, 1080]
+  background_color: [-1.0, -1.0, -1.0]
   units: "height"
   target_refresh_hz: 60.0
   refresh_tolerance_hz: 1.0
+  allow_gui: false
+  cursor_visible: false
 
 hardware:
   keyboard_backend: "ptb"
@@ -23,6 +26,7 @@ timing:
   stimulus:
     duration_ms: 300.0
     frames_at_60hz: 18
+    frames_at_144hz: 43
   delays:
     short_delay_ms: 1200.0
     short_frames_at_60hz: 72
@@ -34,20 +38,54 @@ timing:
     jitter_min_ms: 1000.0
     jitter_max_ms: 1400.0
   anticipation_threshold_ms: 150.0
+  break_duration_seconds: 60.0
+  max_break_duration_seconds: 180.0
+
+stimuli:
+  text_height: 0.12
+  font: "Arial"
+  font_color: [1.0, 1.0, 1.0]
+  cue_valid: "A"
+  cue_invalid_set: ["B", "C", "D", "E", "F", "G"]
+  probe_valid: "X"
+  probe_invalid_set: ["S", "T", "U", "V", "W", "Z"]
 
 design:
   total_blocks: 4
   trials_per_block: 100
   total_experimental_trials: 400
+  counterbalancing_groups:
+    group_a: ["SHORT_DELAY", "LONG_DELAY", "LONG_DELAY", "SHORT_DELAY"]
+    group_b: ["LONG_DELAY", "SHORT_DELAY", "SHORT_DELAY", "LONG_DELAY"]
   block_distribution:
     ax: 70
     ay: 10
     bx: 10
     by: 10
-  counterbalancing_groups:
-    group_a: ["SHORT_DELAY", "LONG_DELAY", "LONG_DELAY", "SHORT_DELAY"]
-    group_b: ["LONG_DELAY", "SHORT_DELAY", "SHORT_DELAY", "LONG_DELAY"]
+    ax_count: 70
+    ay_count: 10
+    bx_count: 10
+    by_count: 10
   run_rules:
     max_consecutive_targets: 4
     max_consecutive_nontargets: 2
     no_consecutive_identical_distractors: true
+
+calibration:
+  srt_trials: 30
+  practice:
+    total_trials: 20
+    distribution:
+      ax_count: 14
+      ay_count: 2
+      bx_count: 2
+      by_count: 2
+    feedback_duration_ms: 800.0
+    passing_accuracy_ratio: 0.80
+    max_allowed_target_omissions: 0
+    max_practice_attempts: 3
+
+logging:
+  output_dir: "data/raw"
+  schema_version: "1.0"
+  save_frame_intervals: true
