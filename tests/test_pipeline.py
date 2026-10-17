@@ -43,12 +43,24 @@ def test_sdt_zero_hits():
 
 
 def test_mad_filtering_identical_values():
-    """Confirms MAD filter handles identical RTs (MAD = 0) without dividing by zero."""
+    """Confirms MAD filter handles identical RTs (MAD = 0) without dividing by zero.
+
+    When all RTs are identical, MAD == 0, so the raw bounds
+    (median +/- k*MAD) collapse to the median itself:
+        lower = max(150.0, 400.0 - 3*0) = max(150.0, 400.0) = 400.0
+        upper = min(2000.0, 400.0 + 3*0) = min(2000.0, 400.0) = 400.0
+
+    Contract invariants under test:
+      1. No ZeroDivisionError (MAD == 0 must not cause failure).
+      2. low_b <= high_b always holds.
+      3. All 400s remain in-bounds (no value falsely flagged as outlier).
+    """
     dummy_df = pd.DataFrame({"rt_ms": [400.0] * 50})
     low_b, high_b = compute_within_subject_mad_bounds(dummy_df, k=3.0)
 
-    assert low_b == 150.0  # Clamped to min cutoff
-    assert high_b == 400.0
+    assert low_b == 400.0, f"Expected degenerate lower bound 400.0, got {low_b}"
+    assert high_b == 400.0, f"Expected degenerate upper bound 400.0, got {high_b}"
+    assert low_b <= high_b, "lower_bound must never exceed upper_bound"
 
 
 def test_mad_filtering_extreme_outlier():
