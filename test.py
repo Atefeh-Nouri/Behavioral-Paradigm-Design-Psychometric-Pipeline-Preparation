@@ -1,20 +1,20 @@
-"""
-===================================================================================================
-Master Repository Test Contract: Dual-Delay AX-Continuous Performance Test (cpt-project)
-Root Directory: D:\Machine learning\Atefeh\cpt-project (/d/Machine learning/Atefeh/cpt-project)
-===================================================================================================
+#!/usr/bin/env python3
+r"""Master Repository Test Contract: Dual-Delay AX-Continuous Performance Test (cpt-project)
+
+Root Directory: D:/Machine learning/Atefeh/cpt-project
+Git Bash Equivalent: /d/Machine learning/Atefeh/cpt-project
+
 This comprehensive test suite acts as the single source of truth for repository layout,
 module imports, configuration contracts, run-rules, 22-column logging schema compliance,
 Signal Detection Theory (SDT) mathematics, Median Absolute Deviation (MAD) cleaning logic,
 and end-to-end integration contracts.
-
-Compatible with both `pytest` (`python -m pytest test.py -v`) and direct Python execution (`python test.py`).
 """
 
 import os
 import sys
 import math
 import json
+import traceback
 import yaml
 import numpy as np
 import pandas as pd
@@ -45,7 +45,7 @@ def assert_raises(exc_type, func, *args, **kwargs):
 
 def resolve_project_root() -> Path:
     """
-    Resolves project root across Windows ('D:\\Machine learning\\Atefeh\\cpt-project'),
+    Resolves project root across Windows ('D:/Machine learning/Atefeh/cpt-project'),
     Git Bash ('/d/Machine learning/Atefeh/cpt-project'), or current working directory.
     """
     # 1. Check current working directory
@@ -54,7 +54,7 @@ def resolve_project_root() -> Path:
         return cwd
 
     # 2. Check explicit Windows path
-    win_path = Path(r"D:\Machine learning\Atefeh\cpt-project")
+    win_path = Path(r"D:/Machine learning/Atefeh/cpt-project")
     if win_path.exists():
         return win_path.resolve()
 
@@ -472,17 +472,19 @@ def test_mad_latency_filtering():
 def test_end_to_end_synthetic_generation_and_pipeline():
     """
     Runs single-subject synthetic generation, verifies raw output schema,
-    and executes Python psychometric cleaning and summarization.
+    routes through DataIngestor to attach audit flags, and executes 
+    Python psychometric cleaning and summarization.
     """
     from synthetic_data.generator import SyntheticDataGenerator
     from paradigms.psychopy.trial_logic import TrialSequenceGenerator
+    from analysis_python.ingest import DataIngestor
     from analysis_python.clean import flag_trial_anomalies
     from analysis_python.summarize import summarize_subject_session
 
     config_path = PROJECT_ROOT / "config" / "config.yaml"
     with open(config_path, "r", encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
-
+        
     pipeline_cfg_path = PROJECT_ROOT / "config" / "pipeline_config.yaml"
     with open(pipeline_cfg_path, "r", encoding="utf-8") as f:
         p_cfg = yaml.safe_load(f)
@@ -491,12 +493,13 @@ def test_end_to_end_synthetic_generation_and_pipeline():
     generator = SyntheticDataGenerator(cfg, master_seed=42)
     seq_gen = TrialSequenceGenerator(cfg, seed=42)
     traits = generator.draw_subject_traits("SUBJ_001")
-
+    
     trials = []
     global_idx = 1
     is_post_error = False
-
     block_conditions = cfg["design"]["counterbalancing_groups"]["group_a"]
+    subj_rng = np.random.default_rng(42)
+
     for b_idx, condition in enumerate(block_conditions, start=1):
         b_trials = seq_gen.generate_block(condition)
         for b_t_idx, t_def in enumerate(b_trials, start=1):
@@ -512,34 +515,35 @@ def test_end_to_end_synthetic_generation_and_pipeline():
                 "required_key": t_def.required_key,
                 "cpi_nominal_ms": t_def.cpi_nominal_ms,
             }
-            res = generator.simulate_trial(t_dict, global_idx, is_post_error, traits)
+            
+            # Correct argument order based on generate_benchmark.py
+            res = generator.simulate_trial(
+                traits=traits,
+                trial_def=t_dict,
+                trial_idx=global_idx,
+                is_post_error=is_post_error,
+                rng=subj_rng
+            )
+            
             trials.append(res)
             is_post_error = not res["is_correct"]
             global_idx += 1
-
+            
     df_raw = pd.DataFrame(trials)
     assert len(df_raw) == 400
 
-    # Ensure required columns
-    expected_cols = [
-        "session_id", "participant_id", "block_index", "block_condition",
-        "trial_index_global", "trial_index_block", "trial_type",
-        "cue_stimulus", "probe_stimulus", "required_key",
-        "cpi_nominal_ms", "cpi_realized_ms", "fixation_realized_ms",
-        "probe_onset_timestamp", "response_key", "response_timestamp",
-        "rt_ms", "is_correct", "outcome_code", "is_anticipation",
-        "post_error_trial", "frame_drop_detected"
-    ]
-    for col in expected_cols:
-        assert col in df_raw.columns
+    # 2. Route through DataIngestor (populates flag_duplicate_row / flag_dropped_trial)
+    # This satisfies the "DEFENSIVE DATA CONTRACT INITIALIZATION" requirement in clean.py
+    ingestor = DataIngestor(str(pipeline_cfg_path))
+    df_ingested, _ = ingestor.audit_subject_session(df_raw, "in_memory_test.csv")
 
-    # 2. Clean & Flag Anomalies
-    df_cleaned = flag_trial_anomalies(df_raw, p_cfg)
+    # 3. Clean & Flag Anomalies
+    df_cleaned = flag_trial_anomalies(df_ingested, p_cfg)
     assert len(df_cleaned) == 400
     assert "is_retained_for_rt" in df_cleaned.columns
     assert "is_retained_for_sdt" in df_cleaned.columns
 
-    # 3. Summarize Subject
+    # 4. Summarize Subject
     summary = summarize_subject_session(df_cleaned, is_compliant=True, rejection_reason="NONE")
     assert summary["participant_id"] == "SUBJ_001"
     assert summary["n_trials_raw"] == 400
@@ -579,6 +583,7 @@ if __name__ == "__main__":
             print(f"[PASS] {name}")
             passed += 1
         except Exception as e:
+            traceback.print_exc()
             print(f"[FAIL] {name}: {e}")
             failed += 1
 

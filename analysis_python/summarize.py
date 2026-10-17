@@ -132,3 +132,43 @@ def summarize_subject_session(
         "vigilance_slope_ms": round(vigilance_slope, 5),
         "mad_outlier_count": int(subj_df["flag_mad_outlier"].sum())
     }
+
+# CPT_SUMMARIZE_AUDIT_INPUT_HARD_PATCH
+import pandas as _cpt_sum_pd
+
+try:
+    from .clean import _cpt_hard_ensure_dataframe as _cpt_sum_ensure_dataframe
+except Exception:
+    def _cpt_sum_ensure_dataframe(df):
+        return df
+
+
+_cpt_sum_original_summarize = globals().get("summarize_subject_session")
+
+if (
+    _cpt_sum_original_summarize is not None
+    and not getattr(_cpt_sum_original_summarize, "_cpt_sum_wrapped", False)
+):
+
+    def summarize_subject_session(*args, **kwargs):
+        args = tuple(
+            _cpt_sum_ensure_dataframe(arg)
+            if isinstance(arg, _cpt_sum_pd.DataFrame)
+            else arg
+            for arg in args
+        )
+
+        kwargs = {
+            key: _cpt_sum_ensure_dataframe(value)
+            if isinstance(value, _cpt_sum_pd.DataFrame)
+            else value
+            for key, value in kwargs.items()
+        }
+
+        return _cpt_sum_original_summarize(*args, **kwargs)
+
+    summarize_subject_session.__doc__ = getattr(_cpt_sum_original_summarize, "__doc__", None)
+    summarize_subject_session.__wrapped__ = _cpt_sum_original_summarize
+    summarize_subject_session._cpt_sum_wrapped = True
+
+    globals()["summarize_subject_session"] = summarize_subject_session

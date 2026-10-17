@@ -4,11 +4,11 @@ Enforces Raw Data Schema v1.0, detects session anomalies,
 and generates participant compliance logs.
 """
 
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 import glob
-import json
 import os
-from typing import Any, Dict, List, Tuple
+from typing import List, Tuple
+
 import numpy as np
 import pandas as pd
 import yaml
@@ -38,6 +38,7 @@ class DataIngestor:
     Ingests raw participant CSV files, applies strict schema assertions,
     detects technical logging anomalies, and flags non-compliant cohorts.
     """
+
     EXPECTED_COLUMNS = [
         "session_id", "participant_id", "block_index", "block_condition",
         "trial_index_global", "trial_index_block", "trial_type",
@@ -45,7 +46,7 @@ class DataIngestor:
         "cpi_nominal_ms", "cpi_realized_ms", "fixation_realized_ms",
         "probe_onset_timestamp", "response_key", "response_timestamp",
         "rt_ms", "is_correct", "outcome_code", "is_anticipation",
-        "post_error_trial", "frame_drop_detected"
+        "post_error_trial", "frame_drop_detected",
     ]
 
     EXPECTED_DTYPES = {
@@ -70,62 +71,147 @@ class DataIngestor:
         "outcome_code": "object",
         "is_anticipation": "bool",
         "post_error_trial": "bool",
-        "frame_drop_detected": "bool"
+        "frame_drop_detected": "bool",
     }
+
+    # Frozen-spec defaults (PSD v1.0 / Day-19 pipeline_config contract).
+    _DEFAULT_DEDUP_SUBSET = ["participant_id", "trial_index_global"]
+    _DEFAULT_DEDUP_KEEP = "first"
+    _DEFAULT_MIN_TRIALS = 380
+    _DEFAULT_MAX_AX_OMISSION_RATE = 0.15
+    _DEFAULT_MAX_ANTICIPATION_RATE = 0.10
+    _DEFAULT_EXPECTED_TRIAL_COUNT = 400
+    _DEFAULT_RAW_DATA_DIR = "data/raw"
 
     def __init__(self, config_path: str = "config/pipeline_config.yaml"):
         if not os.path.exists(config_path):
-            raise FileNotFoundError(f"Pipeline configuration not found at: {config_path}")
+            raise FileNotFoundError(
+                f"Pipeline configuration not found at: {config_path}"
+            )
         with open(config_path, "r", encoding="utf-8") as f:
-            self.config = yaml.safe_load(f)
+            self.config = yaml.safe_load(f) or {}
 
+        # Fail fast with actionable diagnosis if the wrong config file was passed.
+        if not isinstance(self.config, dict) or "cleaning_rules" not in self.config:
+            raise ValueError(
+                f"{config_path} does not appear to be a pipeline_config.yaml "
+                f"(missing top-level 'cleaning_rules'). "
+                f"Top-level keys found: {list(self.config.keys()) if isinstance(self.config, dict) else type(self.config).__name__}"
+            )
+
+    # ------------------------------------------------------------------
+    # Structure validation
+    # ------------------------------------------------------------------
     def validate_file_structure(self, df: pd.DataFrame, file_path: str) -> None:
         """Asserts exact column order, names, and allowable categorical values."""
         if list(df.columns) != self.EXPECTED_COLUMNS:
             raise SchemaIntegrityError(
                 f"File {file_path} failed column contract!\n"
-                f"Expected: {self.EXPECTED_COLUMNS}\nGot: {list(df.columns)}"
+                f"Expected: {self.EXPECTED_COLUMNS}\n"
+                f"Got:      {list(df.columns)}"
             )
 
         for col, expected_dtype in self.EXPECTED_DTYPES.items():
             actual_dtype = str(df[col].dtype)
             if actual_dtype != expected_dtype:
-                # Handle pandas reading integer columns with nulls as float64
-                if not (expected_dtype == "int64" and actual_dtype in ["int64", "float64"]):
+                # pandas reads int columns containing nulls as float64
+                if not (
+                    expected_dtype == "int64"
+                    and actual_dtype in ("int64", "float64")
+                ):
                     raise SchemaIntegrityError(
                         f"File {file_path} column '{col}' type mismatch! "
                         f"Expected {expected_dtype}, got {actual_dtype}"
                     )
 
-    def audit_subject_session(self, df: pd.DataFrame, file_path: str) -> Tuple[pd.DataFrame, SubjectValidationRecord]:
+    # ------------------------------------------------------------------
+    # Config accessors with safe defaults
+    # ------------------------------------------------------------------
+    def _get_dedup_config(self) -> Tuple[List[str], str]:
+        clean_rules = self.config.get("cleaning_rules", {}) or {}
+        dedup_cfg = clean_rules.get("deduplication", {}) or {}
+        subset = dedup_cfg.get("subset", self._DEFAULT_DEDUP_SUBSET)
+        keep = dedup_cfg.get("keep", self._DEFAULT_DEDUP_KEEP)
+        if not isinstance(subset, (list, tuple)) or not subset:
+            subset = self._DEFAULT_DEDUP_SUBSET
+        if keep not in ("first", "last", False):
+            keep = self._DEFAULT_DEDUP_KEEP
+        return list(subset), keep
+
+    def _get_compliance_thresholds(self) -> dict:
+        thresh = self.config.get("compliance_thresholds", {}) or {}
+        return {
+            "min_trials_required": float(
+                thresh.get("min_trials_required", self._DEFAULT_MIN_TRIALS)
+            ),
+            "max_ax_omission_rate": float(
+                thresh.get("max_ax_omission_rate", self._DEFAULT_MAX_AX_OMISSION_RATE)
+            ),
+            "max_anticipation_rate": float(
+                thresh.get("max_anticipation_rate", self._DEFAULT_MAX_ANTICIPATION_RATE)
+            ),
+        }
+
+    def _get_expected_trial_count(self) -> int:
+        # Prefer experimental config total if available; else PSD default.
+        design = self.config.get("design", {}) or {}
+        try:
+            return int(design.get("total_experimental_trials", self._DEFAULT_EXPECTED_TRIAL_COUNT))
+        except (TypeError, ValueError):
+            return self._DEFAULT_EXPECTED_TRIAL_COUNT
+
+    def _get_raw_data_dir(self) -> str:
+        io_cfg = self.config.get("io", {}) or {}
+        return io_cfg.get("raw_data_dir", self._DEFAULT_RAW_DATA_DIR)
+
+    # ------------------------------------------------------------------
+    # Subject session audit
+    # ------------------------------------------------------------------
+    def audit_subject_session(
+        self,
+        df: pd.DataFrame,
+        file_path: str,
+    ) -> Tuple[pd.DataFrame, SubjectValidationRecord]:
         """Audits trial continuity, duplicates, and psychometric compliance."""
         self.validate_file_structure(df, file_path)
+
         participant_id = str(df["participant_id"].iloc[0])
         total_rows = len(df)
 
-        # 1. Audit Duplicates
-        dedup_cfg = self.config["cleaning_rules"]["deduplication"]
-        dup_mask = df.duplicated(subset=dedup_cfg["subset"], keep=dedup_cfg["keep"])
+        # 1. Audit duplicates (safe config access; no KeyError possible)
+        dedup_subset, dedup_keep = self._get_dedup_config()
+        dup_mask = df.duplicated(subset=dedup_subset, keep=dedup_keep)
         duplicate_count = int(dup_mask.sum())
 
-        # Non-destructively tag duplicates
         df = df.copy()
-        df["flag_duplicate_row"] = dup_mask
+        df["flag_duplicate_row"] = dup_mask.astype(bool)
 
-        # 2. Audit Trial Continuity (Missing rows)
+        # 2. Audit trial continuity
         unique_indices = df.loc[~dup_mask, "trial_index_global"].values
-        expected_indices = np.arange(1, 401)
-        missing_count = int(len(set(expected_indices) - set(unique_indices)))
+        expected_count = self._get_expected_trial_count()
+        expected_indices = np.arange(1, expected_count + 1)
+        missing_count = int(
+            len(set(expected_indices.tolist()) - set(np.asarray(unique_indices).tolist()))
+        )
         df["flag_dropped_trial"] = False
 
-        # 3. Psychometric Compliance Evaluation
-        thresh = self.config["compliance_thresholds"]
-        ax_trials = df[(df["trial_type"] == "AX") & (~df["flag_duplicate_row"])]
-        ax_omissions = (ax_trials["outcome_code"] == "OMISSION_ERROR").sum()
-        ax_omission_rate = float(ax_omissions / len(ax_trials)) if len(ax_trials) > 0 else 1.0
+        # 3. Psychometric compliance evaluation (safe config access)
+        thresh = self._get_compliance_thresholds()
 
-        anticipations = (df["outcome_code"] == "ANTICIPATION").sum()
-        anticipation_rate = float(anticipations / total_rows) if total_rows > 0 else 1.0
+        ax_mask = (df["trial_type"] == "AX") & (~df["flag_duplicate_row"])
+        ax_trials = df.loc[ax_mask]
+        ax_total = len(ax_trials)
+        if ax_total > 0:
+            ax_omissions = int((ax_trials["outcome_code"] == "OMISSION_ERROR").sum())
+            ax_omission_rate = ax_omissions / ax_total
+        else:
+            ax_omission_rate = 1.0
+
+        if total_rows > 0:
+            anticipations = int((df["outcome_code"] == "ANTICIPATION").sum())
+            anticipation_rate = anticipations / total_rows
+        else:
+            anticipation_rate = 1.0
 
         is_compliant = True
         rejection_reason = "NONE"
@@ -147,22 +233,27 @@ class DataIngestor:
             has_schema_mismatch=False,
             duplicate_rows_detected=duplicate_count,
             missing_trials_detected=missing_count,
-            ax_omission_rate=round(ax_omission_rate, 4),
-            anticipation_rate=round(anticipation_rate, 4),
+            ax_omission_rate=round(float(ax_omission_rate), 4),
+            anticipation_rate=round(float(anticipation_rate), 4),
             is_compliant=is_compliant,
-            rejection_reason=rejection_reason
+            rejection_reason=rejection_reason,
         )
 
         return df, record
 
+    # ------------------------------------------------------------------
+    # Batch ingestion
+    # ------------------------------------------------------------------
     def ingest_all_sessions(self) -> Tuple[pd.DataFrame, List[SubjectValidationRecord]]:
         """Ingests and validates all matching participant files in the raw data directory."""
-        raw_dir = self.config["io"]["raw_data_dir"]
+        raw_dir = self._get_raw_data_dir()
         search_pattern = os.path.join(raw_dir, "SUBJ_*_raw_trials.csv")
         file_list = sorted(glob.glob(search_pattern))
 
         if not file_list:
-            raise FileNotFoundError(f"No participant raw files found matching {search_pattern}")
+            raise FileNotFoundError(
+                f"No participant raw files found matching {search_pattern}"
+            )
 
         all_dfs = []
         validation_records = []

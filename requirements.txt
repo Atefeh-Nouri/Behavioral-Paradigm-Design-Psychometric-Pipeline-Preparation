@@ -5,3 +5,4 @@ scipy
 pydantic
 pyyaml
 pytest
+jsonschema==4.26.0

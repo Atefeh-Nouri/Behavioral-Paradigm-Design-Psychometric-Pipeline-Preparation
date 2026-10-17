@@ -1,3 +1,12 @@
+version: "1.0.0"
+pipeline_name: "ax_cpt_psychometric_processor"
+
+io:
+  raw_data_dir: "data/raw"
+  output_python_dir: "data/processed/python"
+  output_r_dir: "data/processed/r"
+  raw_schema_file: "config/schema_raw_v1.json"
+
 compliance_thresholds:
   min_trials_required: 380
   max_ax_omission_rate: 0.15
@@ -7,10 +16,16 @@ cleaning_rules:
   rt_cutoffs_ms:
     min: 150.0
     max: 2000.0
+
   mad_filtering:
     enabled: true
     threshold_k: 3.0
-    scale_constant: 1.482602218505602
+    scale_constant: 1.4826022185056
+    apply_to_conditions: ["AX"]
+
+  deduplication:
+    subset: ["participant_id", "trial_index_global"]
+    keep: "first"
 
 sdt_parameters:
   correction_method: "hautus_log_linear"
@@ -18,3 +33,7 @@ sdt_parameters:
   total_signal_adjustment: 1.0
   fa_adjustment: 0.5
   total_noise_adjustment: 1.0
+
+numerical_precision:
+  float_tolerance_equivalence: 1e-6
+  rounding_decimals_summary: 5
