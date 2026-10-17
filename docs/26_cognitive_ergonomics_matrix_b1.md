@@ -1,134 +1,36 @@
 # Cognitive Ergonomics & Mental Workload Mapping (Deliverable D8-B1)
 
-## 1. Purpose
+## 1. Synthesis Matrix B1: Cognitive Ergonomics Translation Layer
 
-This document maps AX-CPT behavioral indices to cognitive ergonomics, mental workload, operator-state monitoring, and human performance constructs.
+This matrix operationalizes the translation between experimental AX-CPT indices and human factors engineering, neuroergonomics, and operator-state monitoring constructs (*Wickens, 2002, 2008*; *Parasuraman et al., 2000*; *Endsley, 1995*). Every mapping explicitly defines allowable inferences alongside invalid extrapolations.
 
-The goal is not to produce clinical diagnoses. The goal is to define what each observable metric can validly support, what alternative explanations exist, and what extrapolations are invalid.
+```
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                        COGNITIVE ERGONOMICS TRANSLATION LAYER                          │
+├──────────────────────────┬────────────────────────────┬────────────────────────────────┤
+│ Micro-Behavioral Metric  │ Intermediate State Proxy   │ Macro Ergonomic Construct      │
+├──────────────────────────┼────────────────────────────┼────────────────────────────────┤
+│ • RT Tail (Tau) / ICV    │ • Attentional Fluctuation  │ • Tonic Vigilance Depletion    │
+│ • AY Commission Errors   │ • Impulsive Motor Gating   │ • Action Slip Under High Load  │
+│ • BX Errors (Long Delay) │ • Context Representation   │ • Loss of Situation Awareness  │
+│ • Target Misses (Omiss)  │ • Perceptual Decoupling    │ • System Boundary Neglect      │
+└──────────────────────────┴────────────────────────────┴────────────────────────────────┘
+```
 
-Primary constructs addressed:
+| Behavioral Paradigm Index | Primary Ergonomic / Workload Construct | Theoretical & Mechanistic Anchor | Valid Inference Space (What It CAN Support) | Invalid Extrapolation (What It CANNOT Support) |
+| :--- | :--- | :--- | :--- | :--- |
+| **Intra-Individual RT Variability ($ICV$) & Ex-Gaussian Tail ($\tau$)** | **Tonic Alertness Degradation / Micro-Lapses** | Locus coeruleus noradrenergic dysregulation (*Aston-Jones & Cohen, 2005*); Default Mode Network (DMN) intrusion (*Weissman et al., 2006*). | Indexes an operator’s endogenous ability to suppress task-unrelated thoughts (TUTs) and maintain temporal stability during unpaced, monotonous supervisory monitoring. | Cannot infer chronic pathological sleep disorders, operational burnout, or real-time clinical drowsiness without concurrent physiological telemetry (e.g., EEG theta/beta ratio, PERCLOS eye-tracking). |
+| **Conflict Slowing Cost ($\Delta RT_{AY}$) & $AY$ Commissions** | **Executive Action-Slip Vulnerability / Automaticity Capture** | Multiple Resource Theory (*Wickens, 2008*); Rasmussen's Skills-Rules-Knowledge (SRK) framework (Capture slips from Skill-based to Rule-based execution). | Measures vulnerability to routine motor capture when a salient default cue triggers automatic actions that contradict emergent safety conditions. | Cannot predict physical control compliance under high dynamic g-forces, gross motor panic, or novel crisis-management scenarios containing no pre-trained behavioral rules. |
+| **Working Memory Delay Decay ($\Delta BX_{\text{Long} - \text{Short}}$)** | **Loss of Situation Awareness (SA Level 2 & 3: Comprehension & Projection)** | Situation Awareness Model (*Endsley, 1995*); Concentric Working Memory Model (*Oberauer, 2002*). | Reflects decay of active context representations over temporal delays; quantifies susceptibility to forgetting transient tactical state changes during unprompted delays. | Cannot determine whether an operator possesses correct long-term procedural domain knowledge (mental model integrity) versus short-term sensory cache decay. |
+| **Global Target Omission Rate (Misses)** | **Perceptual Decoupling / Vigilance Collapse** | Sustained Attention Depletion Hypothesis (*Warm et al., 2008*); Perceptual Load Theory (*Lavie, 2005*). | Flags gross operational disengagement, severe sensory decoupling, or channel saturation where primary visual alerts fail to break processing thresholds. | Cannot differentiate physical motor incapacitation (e.g., peripheral limb freezing, hardware switch mechanical disconnect) from pure neurocognitive neglect. |
+| **Signal Detection Sensitivity ($d'$) & Bias ($c$)** | **Alarm Trust Calibration & Perceptual Discriminability** | Theory of Signal Detectability (*Green & Swets, 1966*); Automation Trust Calibration (*Lee & See, 2004*). | Separates an operator’s true sensory/informational discrimination capacity ($d'$) from strategic, payoff-driven shifts in conservative vs. liberal reporting thresholds ($c$). | Cannot predict team-level coordinated detection performance or organizational compliance where operator decision thresholds are externally dictated by policy. |
+| **Post-Error Slowing ($PES$)** | **Adaptive Error Monitoring & Strategic Regrouping** | Cognitive Control & Conflict Monitoring (*Botvinick et al., 2001*); Post-error orienting reflex (*Notebaert et al., 2009*). | Measures functional cognitive flexibility: whether an operator dynamically raises their response threshold and engages in deliberate verification following an acknowledged error. | Cannot assess emotional resilience, post-traumatic operational freeze, or moral injury resulting from high-consequence operational failures. |
 
-- Sustained attention / vigilance
-- Inhibitory control
-- Working memory context maintenance
-- Response bias
-- Error monitoring
-- Temporal fatigue / vigilance decrement
-- Psychomotor efficiency
+---
 
-## 2. Theoretical Anchors
+## 2. Measurement-Validity Caveats: Lab-to-Operational Boundaries
 
-This matrix is grounded in human factors and cognitive engineering literature, including:
-
-- Wickens' multiple-resource theory
-- Parasuraman's automation and human performance work
-- Endsley's situation awareness framework
-- Signal Detection Theory
-- Ex-Gaussian and drift-diffusion models of response latency
-- Cognitive failure and vigilance decrement literature
-
-The AX-CPT is treated here as a behavioral measurement instrument, not as a diagnostic device.
-
-## 3. Cognitive Ergonomics Translation Layer
-
-| Behavioral Paradigm Index | Primary Ergonomic / Workload Construct | Theoretical & Mechanistic Anchor | Valid Inference Space | Invalid Extrapolation |
-|---|---|---|---|---|
-| AX omission rate | Sustained attention failure | Vigilance decrement, locus coeruleus-norepinephrine arousal regulation, mind-wandering | Supports inference of attention lapses or disengagement under task persistence conditions | Cannot by itself diagnose ADHD, fatigue disorder, or clinical inattention |
-| BX commission rate | Inhibitory control failure | Right inferior frontal cortex, pre-SMA, basal ganglia gating, response suppression | Supports inference of weakened prepotent response inhibition or impulsive responding | Cannot be interpreted as general impulsivity pathology without broader battery |
-| AY error rate under LONG_DELAY | Working memory context maintenance fragility | DLPFC, parietal context maintenance, striatal gating, cue-probe binding | Supports inference of context decay across delay | Cannot isolate working memory capacity without controlling speed-accuracy tradeoff and attention |
-| AY short-delay vs long-delay cost | Delay-sensitive context retention | Temporal decay of cue representation | Supports inference of delay-dependent maintenance cost | Cannot prove structural WM deficit without empirical population comparison |
-| d-prime | Perceptual/cognitive sensitivity | Signal Detection Theory | Separates response tendency from discriminability | Does not measure intelligence, effort, or clinical severity directly |
-| Criterion c | Response bias / strategic setting | SDT decision criterion | Supports inference of liberal vs conservative responding | Cannot be interpreted as motivation or personality without context |
-| Mean RT and RT variability | Psychomotor efficiency and stability | Ex-Gaussian distribution, motor execution, arousal | Supports inference of processing speed and response stability | Confounded by hardware, keyboard latency, motor impairment, and practice |
-| Vigilance slope | Time-on-task degradation | Fatigue, habituation, arousal decline | Supports inference of temporal performance decline within session | Cannot measure circadian state or chronic fatigue without longitudinal design |
-| Post-error slowing | Error monitoring strength | Anterior cingulate cortex, conflict monitoring | Supports inference of behavioral adjustment after errors | Cannot be equated with anxiety, compulsivity, or clinical insight |
-| Anticipation rate | Premature responding / impulsivity | Response activation before probe offset | Supports inference of premature response tendency | May also reflect timing misalignment, hardware artifacts, or misunderstanding of task |
-
-## 4. Derived Ergonomic Metrics
-
-The pipeline should compute or preserve the following derived metrics where supported by raw data:
-
-- AX omission rate
-- BX commission rate
-- AY error rate by delay condition
-- d-prime
-- Criterion c
-- Mean RT by trial type
-- Median RT by trial type
-- SD RT by trial type
-- Ex-Gaussian mu, sigma, tau where estimable
-- Conflict cost
-- Working memory decay cost
-- Post-error slowing
-- Vigilance slope
-- Anticipation rate
-- Frame-drop burden
-- Session compliance status
-
-## 5. Signal Detection Theory Integration
-
-Raw accuracy alone is insufficient for ergonomic interpretation.
-
-SDT is required to separate:
-
-- Sensitivity: can the participant distinguish target context from non-target context?
-- Bias: does the participant favor responding or withholding responses?
-
-Recommended correction:
-
-- Use Hautus log-linear correction for zero cells.
-- Do not use naive proportions when hits, misses, false alarms, or correct rejections are zero.
-- Report correction status alongside d-prime and criterion.
-
-## 6. Lab-to-Field Validity Caveats
-
-Extending lab-based AX-CPT indices to real operator settings requires caution.
-
-Major threats:
-
-- Multimodal interference
-- Circadian rhythm effects
-- Task switching in real environments
-- Asymmetric cost functions
-- Physical workload
-- Environmental distractions
-- Motivation differences
-- Population differences
-- Device latency differences
-
-Therefore, this matrix supports:
-
-- hypothesis generation
-- behavioral phenotyping
-- human-factors instrumentation
-- research-oriented operator-state modeling
-
-It does not support:
-
-- autonomous diagnosis
-- fitness-for-duty decisions
-- clinical classification
-- employment screening without empirical validation
-
-## 7. Traceability
-
-This deliverable must remain traceable to:
-
-- docs/01_construct_definition_matrix.md
-- docs/03_experimental_design.md
-- docs/04_timing_state_machine_schema.md
-- docs/13_synthetic_data_model_specification.md
-- docs/21_cleaning_and_sdt_spec.md
-- config/config.yaml
-- config/pipeline_config.yaml
-- analysis_python/sdt.py
-- analysis_r/cpt_cleaning_pipeline.R
-
-## 8. Exit Checklist
-
-- Paradigm metrics mapped to ergonomic constructs.
-- Valid inference space documented for each metric.
-- Invalid extrapolations explicitly blocked.
-- SDT integration specified.
-- Lab-to-field caveats documented.
-- Non-diagnostic governance maintained.
+1. **Synthetic Isolation vs. Multimodal Cross-Talk**: In the laboratory AX-CPT, stimuli appear against a static background. Operational environments require concurrent processing across auditory radio calls, ambient buzzers, visual displays, and tactile controls. High lab $d'$ does not guarantee immunity to cross-modal sensory masking (*Wickens, 2002*).
+2. **Temporal Compression vs. Circadian Shift Dynamics**: The 31.2-minute testing window cannot be linearly extrapolated to 8- or 12-hour operational shifts where vigilance interacts with circadian nadirs (e.g., 03:00 to 05:00 AM) without biomathematical sleep-wake modeling (*Hursh et al., 2004* [verify]).
+3. **Symmetric Loss Functions vs. Asymmetric Operational Stakes**: Laboratory omissions cost only an unearned score increment. In critical telemetry, an omission represents an unmanaged catastrophe, whereas false alarms cause nuisance alerts. Response criteria ($c$) are shaped by arbitrary laboratory payoffs and are not fixed personality traits.
+4. **Physical Restriction vs. Embodied Interaction**: Laboratory chin-rests and keypresses suppress natural motor compensation (posture shifts, pacing, scanning) that operators endogenously recruit to combat fatigue in the field.

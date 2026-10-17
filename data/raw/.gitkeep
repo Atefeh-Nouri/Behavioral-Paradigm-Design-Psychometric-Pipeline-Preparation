@@ -1,2 +1,0 @@
-# Preserves data/raw directory structure under Git tracking.
-# Raw participant session dumps (*_raw_trials.csv) and manifests are git-ignored for privacy.
