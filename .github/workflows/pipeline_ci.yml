@@ -24,26 +24,25 @@ jobs:
           python-version: "3.11"
           cache: "pip"
 
-      - name: Install system libraries for Arrow/scientific stack
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            libcurl4-openssl-dev \
-            libssl-dev \
-            libxml2-dev
-
-      - name: Install CI Python dependencies
+      - name: Install CI Python Dependencies
         run: |
           python -m pip install --upgrade pip
+          # Ensure requirements-ci.txt exists; if not, fail clearly
+          if [ ! -f requirements-ci.txt ]; then
+            echo "::error::requirements-ci.txt not found!"
+            exit 1
+          fi
           pip install -r requirements-ci.txt
 
-      - name: Ensure data directories exist
+      - name: Verify Project Structure
         run: |
-          mkdir -p data/raw
-          mkdir -p data/processed/python
-          mkdir -p data/processed/r
+          ls -la
+          ls -la config/
+          ls -la paradigms/psychopy/
+          ls -la tests/
 
       - name: Execute Pytest Suite
+        # pytest.ini handles PYTHONPATH automatically now
         run: |
           pytest \
             tests/test_pipeline.py \
@@ -56,12 +55,14 @@ jobs:
 
       - name: Generate Synthetic Benchmark Data
         run: |
+          mkdir -p data/raw
           python synthetic_data/generate_benchmark.py \
             --config config/config.yaml \
             --seed 2026
 
       - name: Run Python Psychometric Processing Pipeline
         run: |
+          mkdir -p data/processed/python
           python analysis_python/cpt_pipeline.py \
             --config config/pipeline_config.yaml
 
@@ -83,7 +84,7 @@ jobs:
       - name: Checkout Code Repository
         uses: actions/checkout@v4
 
-      - name: Install system libraries
+      - name: Install System Libraries
         run: |
           apt-get update
           apt-get install -y --no-install-recommends \
@@ -94,27 +95,27 @@ jobs:
             python3-pip \
             python3-venv
 
-      - name: Install required R packages
-        run: |
-          Rscript -e "install.packages(c('yaml', 'arrow', 'quarto'), repos='https://cloud.r-project.org')"
-
-      - name: Prepare Python environment inside R container
+      - name: Prepare Python Environment Inside Container
         run: |
           python3 -m venv /tmp/pyenv
           /tmp/pyenv/bin/python -m pip install --upgrade pip
           /tmp/pyenv/bin/pip install -r requirements-ci.txt
 
-      - name: Ensure data directories exist
+      - name: Ensure Data Directories Exist
         run: |
           mkdir -p data/raw
           mkdir -p data/processed/python
           mkdir -p data/processed/r
 
-      - name: Generate Synthetic Benchmark Data
+      - name: Generate Synthetic Benchmark Data (via Python Env)
         run: |
           /tmp/pyenv/bin/python synthetic_data/generate_benchmark.py \
             --config config/config.yaml \
             --seed 2026
+
+      - name: Install Required R Packages
+        run: |
+          Rscript -e "install.packages(c('yaml', 'arrow'), repos='https://cloud.r-project.org')"
 
       - name: Execute R Cleaning and Scoring Pipeline
         run: |
@@ -144,20 +145,20 @@ jobs:
           python-version: "3.11"
           cache: "pip"
 
-      - name: Install verification dependencies
+      - name: Install Verification Dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-ci.txt
 
-      - name: Download Python artifacts
+      - name: Download Python Artifacts
         uses: actions/download-artifact@v4
         with:
           name: python-processed-data
           path: data/processed/python/
 
-      - name: Download R artifacts
+      - name: Download R Artifacts
         uses: actions/download-artifact@v4
-        with:
+          with:
           name: r-processed-data
           path: data/processed/r/
 
