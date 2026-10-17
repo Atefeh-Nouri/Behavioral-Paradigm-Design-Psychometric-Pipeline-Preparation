@@ -75,7 +75,11 @@ def run_batch_generation(config_path: str = "config/config.yaml", master_seed: i
         global_idx = 1
         is_post_error = False
         subj_rng = np.random.default_rng(master_seed + s_idx)
-        session_uuid = str(uuid.UUID(int=int(subj_rng.integers(0, 2**128))))
+        # Draw 16 raw bytes (128 bits) directly instead of rng.integers(0, 2**128):
+        # NumPy's Generator.integers() caps at int64 max (2**63 - 1), so 2**128
+        # overflows with ValueError. rng.bytes(16) is endian-stable and fully
+        # deterministic for a fixed subj_rng seed, preserving reproducibility.
+        session_uuid = str(uuid.UUID(bytes=subj_rng.bytes(16)))
 
         for b_idx, cond in enumerate(block_conditions, start=1):
             block_defs = seq_gen.generate_block(cond)
