@@ -10,29 +10,65 @@ permissions:
   contents: read
 
 jobs:
-  python-test-suite:
-    name: Python 3.11 Unit Tests & Pipeline Run
+
+  # ─── Single source of truth for raw data ──────────────────────────────────
+  generate-benchmark-data:
+    name: Generate Benchmark Data (single source of truth)
     runs-on: ubuntu-24.04
-
     steps:
-      - name: Checkout Code Repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: "pip"
           cache-dependency-path: requirements-ci.txt
 
-      - name: Install CI Python Dependencies
-        run: |
+      - run: |
           python -m pip install --upgrade pip
-          if [ ! -f requirements-ci.txt ]; then
-            echo "::error::requirements-ci.txt not found!"
-            exit 1
-          fi
           pip install -r requirements-ci.txt
+
+      - name: Generate raw benchmark data (single generation, pinned to Python 3.11)
+        run: |
+          mkdir -p data/raw
+          python synthetic_data/generate_benchmark.py \
+            --config config/config.yaml \
+            --seed 2026
+
+      - name: Print raw-data checksum (for parity audit trail)
+        run: sha256sum data/raw/*.csv | sort | sha256sum
+
+      - name: Upload raw benchmark artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-raw-data
+          path: data/raw/
+          retention-days: 1
+          if-no-files-found: error
+
+  # ─── Python pipeline consumes the SAME raw data ───────────────────────────
+  python-test-suite:
+    name: Python 3.11 Unit Tests & Pipeline Run
+    needs: generate-benchmark-data
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: requirements-ci.txt
+
+      - run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-ci.txt
+
+      - name: Download raw benchmark data
+        uses: actions/download-artifact@v4
+        with:
+          name: benchmark-raw-data
+          path: data/raw/
 
       - name: Verify Project Structure
         run: |
@@ -40,6 +76,7 @@ jobs:
           ls -la config/
           ls -la paradigms/psychopy/
           ls -la tests/
+          ls -la data/raw/
 
       - name: Execute Pytest Suite
         run: |
@@ -49,15 +86,7 @@ jobs:
             tests/test_config.py \
             tests/test_trial_generator.py \
             tests/test_logger_schema.py \
-            -v \
-            --durations=10
-
-      - name: Generate Synthetic Benchmark Data
-        run: |
-          mkdir -p data/raw
-          python synthetic_data/generate_benchmark.py \
-            --config config/config.yaml \
-            --seed 2026
+            -v --durations=10
 
       - name: Run Python Psychometric Processing Pipeline
         run: |
@@ -71,64 +100,40 @@ jobs:
           name: python-processed-data
           path: data/processed/python/
           retention-days: 1
-          if-no-files-found: error          # ← NEW: fail loudly if pipeline produced nothing
+          if-no-files-found: error
 
+  # ─── R pipeline consumes the SAME raw data (no regeneration) ──────────────
   r-pipeline-check:
     name: R 4.4 Tidyverse Pipeline Run & QA
-    needs: python-test-suite
+    needs: generate-benchmark-data
     runs-on: ubuntu-24.04
     container:
       image: rocker/tidyverse:4.4.0
-
     steps:
-      - name: Checkout Code Repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Install System Libraries
+      - name: Download raw benchmark data
+        uses: actions/download-artifact@v4
+        with:
+          name: benchmark-raw-data
+          path: data/raw/
+
+      - name: Install System Libraries for arrow
         run: |
           apt-get update
           apt-get install -y --no-install-recommends \
-            ca-certificates \
-            git \
-            libcurl4-openssl-dev \
-            libssl-dev \
-            libxml2-dev \
-            python3 \
-            python3-pip \
-            python3-venv
+            ca-certificates git \
+            libcurl4-openssl-dev libssl-dev libxml2-dev
 
-      - name: Prepare Python Environment Inside Container
-        run: |
-          python3 -m venv /tmp/pyenv
-          /tmp/pyenv/bin/python -m pip install --upgrade pip
-          /tmp/pyenv/bin/pip install -r requirements-ci.txt
-
-      - name: Ensure Data Directories Exist
-        run: |
-          mkdir -p data/raw
-          mkdir -p data/processed/python
-          mkdir -p data/processed/r
-          # Contract: R pipeline MUST write
-          #   data/processed/r/cleaned_trials_r.csv
-          # This is the path the parity verifier consumes.
-
-      - name: Generate Synthetic Benchmark Data (via Python Env)
-        run: |
-          /tmp/pyenv/bin/python synthetic_data/generate_benchmark.py \
-            --config config/config.yaml \
-            --seed 2026
+      - name: Ensure Output Directory Exists
+        run: mkdir -p data/processed/r
 
       - name: Install Required R Packages
-        # arrow is not pre-installed in rocker/tidyverse and must be compiled
-        # from source (~10-15 min on first run). On subsequent runs, consider
-        # adding an r-lib/actions/setup-r-dependencies cache step if this
-        # dominates CI wall time.
         run: |
-          Rscript -e "install.packages(c('yaml', 'arrow'), repos='https://cloud.r-project.org')"
+          Rscript -e "install.packages(c('yaml','arrow'), repos='https://cloud.r-project.org')"
 
       - name: Execute R Cleaning and Scoring Pipeline
-        run: |
-          Rscript analysis_r/cpt_cleaning_pipeline.R
+        run: Rscript analysis_r/cpt_cleaning_pipeline.R
 
       - name: Upload R Processed Artifacts
         uses: actions/upload-artifact@v4
@@ -136,58 +141,37 @@ jobs:
           name: r-processed-data
           path: data/processed/r/
           retention-days: 1
-          if-no-files-found: error          # ← NEW: fail loudly if R script produced nothing
+          if-no-files-found: error
 
+  # ─── Cross-language parity (unchanged) ────────────────────────────────────
   cross-language-equivalence:
     name: Cross-Language Numerical Parity Verification
-    needs:
-      - python-test-suite
-      - r-pipeline-check
+    needs: [python-test-suite, r-pipeline-check]
     runs-on: ubuntu-24.04
-
     steps:
-      - name: Checkout Code Repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: "pip"
           cache-dependency-path: requirements-ci.txt
-
-      - name: Install Verification Dependencies
-        run: |
+      - run: |
           python -m pip install --upgrade pip
           pip install -r requirements-ci.txt
-
-      - name: Download Python Artifacts
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
           name: python-processed-data
           path: data/processed/python/
-
-      - name: Download R Artifacts
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
           name: r-processed-data
           path: data/processed/r/
-
       - name: Sanity Check Artifact Layout
-        # Fail fast with a readable error if the artifact contract drifted
-        # (better than letting verify_equivalence.py raise a FileNotFoundError).
         run: |
           set -euo pipefail
-          ls -la data/processed/python/
-          ls -la data/processed/r/
-          test -f data/processed/python/cleaned_trials.parquet \
-            || { echo "::error::Python artifact missing cleaned_trials.parquet"; exit 1; }
-          test -f data/processed/r/cleaned_trials_r.csv \
-            || { echo "::error::R artifact missing cleaned_trials_r.csv"; exit 1; }
-
+          test -f data/processed/python/cleaned_trials.parquet
+          test -f data/processed/r/cleaned_trials_r.csv
       - name: Run Cross-Language Equivalence Audit
-        # Explicit paths (belt-and-braces with the updated defaults in
-        # verify_equivalence.py) — self-documenting for future maintainers.
         run: |
           set -euo pipefail
           python tests/verify_equivalence.py \
@@ -195,7 +179,6 @@ jobs:
             --r-output  data/processed/r/cleaned_trials_r.csv \
             --config    config/pipeline_config.yaml \
             2>&1 | tee equivalence_report.txt
-
       - name: Upload Equivalence Report
         if: always()
         uses: actions/upload-artifact@v4
