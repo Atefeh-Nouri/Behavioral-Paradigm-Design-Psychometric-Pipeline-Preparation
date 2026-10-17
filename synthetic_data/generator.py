@@ -4,9 +4,7 @@ Produces synthetic trial records conforming to Raw Data Schema v1.0.
 """
 
 from dataclasses import dataclass
-import random
-from typing import Any, Dict, List, Optional, Tuple
-import uuid
+from typing import Any, Dict, Optional
 import numpy as np
 import pandas as pd
 
@@ -87,28 +85,13 @@ class SyntheticDataGenerator:
 
     def simulate_trial(
         self,
-        *args,
-        **kwargs
+        traits: SubjectTraits,
+        trial_def: dict,
+        trial_idx: int,
+        is_post_error: bool,
+        rng: np.random.Generator
     ) -> Dict[str, Any]:
         """Simulates response latency and outcome for a single trial."""
-        # Handle both signature orders flexibly
-        if len(args) == 4:
-            if isinstance(args[0], dict):
-                trial_def, trial_idx, is_post_error, traits = args
-                rng = kwargs.get('rng', getattr(self, 'rng_master', None))
-            else:
-                traits, trial_def, trial_idx, is_post_error = args
-                rng = kwargs.get('rng', getattr(self, 'rng_master', None))
-        elif len(args) >= 5:
-            traits, trial_def, trial_idx, is_post_error, rng = args[:5]
-        else:
-            trial_def = kwargs.get('trial_def') or kwargs.get('t_dict') or (args[0] if len(args) > 0 and isinstance(args[0], dict) else args[1] if len(args) > 1 else None)
-            trial_idx = kwargs.get('trial_idx') or kwargs.get('global_idx') or (args[1] if len(args) > 1 and isinstance(args[1], int) else args[2] if len(args) > 2 else 0)
-            is_post_error = kwargs.get('is_post_error', False)
-            traits = kwargs.get('traits') or (args[0] if len(args) > 0 and not isinstance(args[0], dict) else args[3] if len(args) > 3 else None)
-            rng = kwargs.get('rng', getattr(self, 'rng_master', None))
-        if rng is None:
-            rng = getattr(self, 'rng_master', None)
         t_type = trial_def["trial_type"]
         delay_cond = trial_def["block_condition"]
 
@@ -117,11 +100,11 @@ class SyntheticDataGenerator:
             rt_ms = float(rng.uniform(60.0, 145.0))
             resp_key = rng.choice(["space", "l"])
             is_correct = (resp_key == trial_def["required_key"])
-            return self._build_record(trial_def, trial_idx, rt_ms, resp_key, is_correct, "ANTICIPATION", True, is_post_error)
+            return self._build_record(trial_def, trial_idx, rt_ms, resp_key, is_correct, "ANTICIPATION", True, is_post_error, rng)
 
         # 2. Evaluate Baseline Omission
         if rng.random() < traits.p_omission:
-            return self._build_record(trial_def, trial_idx, None, None, False, "OMISSION_ERROR", False, is_post_error)
+            return self._build_record(trial_def, trial_idx, None, None, False, "OMISSION_ERROR", False, is_post_error, rng)
 
         # 3. Compute Shifted Ex-Gaussian Parameters
         mu_shift = 0.0
@@ -150,7 +133,7 @@ class SyntheticDataGenerator:
 
         # 4. Check for Timeout Lapses
         if rt_ms > self.config["timing"]["response_window_ms"]:
-            return self._build_record(trial_def, trial_idx, None, None, False, "OMISSION_ERROR", False, is_post_error)
+            return self._build_record(trial_def, trial_idx, None, None, False, "OMISSION_ERROR", False, is_post_error, rng)
 
         # 5. Signal Detection Decision Logic
         if t_type == "AX":
@@ -173,7 +156,7 @@ class SyntheticDataGenerator:
         else:
             outcome = "COMMISSION_ERROR"
 
-        return self._build_record(trial_def, trial_idx, rt_ms, resp_key, is_correct, outcome, False, is_post_error)
+        return self._build_record(trial_def, trial_idx, rt_ms, resp_key, is_correct, outcome, False, is_post_error, rng)
 
     def _build_record(
         self,
@@ -184,7 +167,8 @@ class SyntheticDataGenerator:
         is_correct: bool,
         outcome: str,
         is_anticipation: bool,
-        is_post_error: bool
+        is_post_error: bool,
+        rng: np.random.Generator
     ) -> Dict[str, Any]:
         """Maps trial outcome directly to Raw Data Schema v1.0."""
         return {
@@ -199,8 +183,9 @@ class SyntheticDataGenerator:
             "probe_stimulus": t_def["probe_stimulus"],
             "required_key": t_def["required_key"],
             "cpi_nominal_ms": float(t_def["cpi_nominal_ms"]),
-            "cpi_realized_ms": float(t_def["cpi_nominal_ms"] + np.random.normal(0.0, 0.4)),
-            "fixation_realized_ms": float(500.0 + np.random.uniform(-95.0, 95.0)),
+            # FIX: Use the seeded rng instead of unseeded global np.random
+            "cpi_realized_ms": float(t_def["cpi_nominal_ms"] + rng.normal(0.0, 0.4)),
+            "fixation_realized_ms": float(500.0 + rng.uniform(-95.0, 95.0)),
             "probe_onset_timestamp": round(10.0 + (trial_idx * 4.2), 5),
             "response_key": resp_key,
             "response_timestamp": round(10.0 + (trial_idx * 4.2) + (rt_ms / 1000.0), 5) if rt_ms else None,
