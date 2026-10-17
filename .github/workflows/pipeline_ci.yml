@@ -71,6 +71,7 @@ jobs:
           name: python-processed-data
           path: data/processed/python/
           retention-days: 1
+          if-no-files-found: error          # ← NEW: fail loudly if pipeline produced nothing
 
   r-pipeline-check:
     name: R 4.4 Tidyverse Pipeline Run & QA
@@ -107,6 +108,9 @@ jobs:
           mkdir -p data/raw
           mkdir -p data/processed/python
           mkdir -p data/processed/r
+          # Contract: R pipeline MUST write
+          #   data/processed/r/cleaned_trials_r.csv
+          # This is the path the parity verifier consumes.
 
       - name: Generate Synthetic Benchmark Data (via Python Env)
         run: |
@@ -132,6 +136,7 @@ jobs:
           name: r-processed-data
           path: data/processed/r/
           retention-days: 1
+          if-no-files-found: error          # ← NEW: fail loudly if R script produced nothing
 
   cross-language-equivalence:
     name: Cross-Language Numerical Parity Verification
@@ -168,10 +173,28 @@ jobs:
           name: r-processed-data
           path: data/processed/r/
 
-      - name: Run Cross-Language Equivalence Audit
+      - name: Sanity Check Artifact Layout
+        # Fail fast with a readable error if the artifact contract drifted
+        # (better than letting verify_equivalence.py raise a FileNotFoundError).
         run: |
-          set -o pipefail
-          python tests/verify_equivalence.py 2>&1 | tee equivalence_report.txt
+          set -euo pipefail
+          ls -la data/processed/python/
+          ls -la data/processed/r/
+          test -f data/processed/python/cleaned_trials.parquet \
+            || { echo "::error::Python artifact missing cleaned_trials.parquet"; exit 1; }
+          test -f data/processed/r/cleaned_trials_r.csv \
+            || { echo "::error::R artifact missing cleaned_trials_r.csv"; exit 1; }
+
+      - name: Run Cross-Language Equivalence Audit
+        # Explicit paths (belt-and-braces with the updated defaults in
+        # verify_equivalence.py) — self-documenting for future maintainers.
+        run: |
+          set -euo pipefail
+          python tests/verify_equivalence.py \
+            --py-output data/processed/python/cleaned_trials.parquet \
+            --r-output  data/processed/r/cleaned_trials_r.csv \
+            --config    config/pipeline_config.yaml \
+            2>&1 | tee equivalence_report.txt
 
       - name: Upload Equivalence Report
         if: always()

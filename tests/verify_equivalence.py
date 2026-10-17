@@ -2,8 +2,9 @@
 Cross-Language Equivalence Verifier: Python ↔ R Pipeline Parity Audit.
 
 Compares cleaned_trials.parquet (Python) against cleaned_trials_r.csv (R).
-Handles the 36-vs-31 column split: the 5 Python-only audit flags are verified
-for internal consistency but excluded from the shared numeric comparison.
+Python produces 36 columns; R produces 31. The 5 Python-only audit columns
+are verified for dtype/nullability but excluded from the shared numeric
+comparison. All 31 R columns are shared and are compared row-by-row.
 
 Exit codes:
   0  All parity checks passed
@@ -24,14 +25,22 @@ import yaml
 # Constants
 # ---------------------------------------------------------------------------
 
-# Python produces 36 columns; R carries only the 31 operational ones.
-# These 5 are verified for nulls/dtype but NOT compared against R.
+# Python produces 36 columns; R produces 31. These 5 flags are Python-only
+# and are verified for nullability/dtype but NOT compared against R.
+#
+# Contract — keep this list in sync with the Python pipeline:
+#   analysis_python/cpt_pipeline.py  (source of truth)
+# The definitive test is:
+#   py_only = set(py_df.columns) - set(r_cols_in_R_script)
+# Any name listed here MUST exist in Python's output and MUST NOT exist in
+# R's `python_col_order`. Otherwise the verifier either drops a shared
+# column from comparison (silent coverage loss) or emits a dead INFO line.
 PYTHON_ONLY_AUDIT_COLUMNS: list[str] = [
-    "flag_duplicate_row",
-    "flag_dropped_trial",
-    "flag_latency_outlier",
-    "flag_invalid_sequence",
-    "flag_incomplete_block",
+    "flag_missing_trial",
+    "flag_frame_drop",
+    "flag_response_window_violation",
+    "flag_schema_invalid",
+    "flag_excluded",
 ]
 
 # Row sort key — must be present in both outputs.
@@ -42,8 +51,13 @@ DEFAULT_ATOL: float = 1e-5
 DEFAULT_RTOL: float = 1e-5
 
 # Default I/O paths — overridable via CLI or pipeline_config.yaml.
-DEFAULT_PY_OUTPUT: str = "data/processed/cleaned_trials.parquet"
-DEFAULT_R_OUTPUT:  str = "data/processed/cleaned_trials_r.csv"
+#
+# IMPORTANT: these paths MUST match the artifact layout produced by
+# .github/workflows/pipeline_ci.yml:
+#   - Python job uploads   data/processed/python/   → cleaned_trials.parquet
+#   - R job uploads        data/processed/r/        → cleaned_trials_r.csv
+DEFAULT_PY_OUTPUT: str = "data/processed/python/cleaned_trials.parquet"
+DEFAULT_R_OUTPUT:  str = "data/processed/r/cleaned_trials_r.csv"
 DEFAULT_CONFIG:    str = "config/pipeline_config.yaml"
 
 
@@ -53,6 +67,12 @@ DEFAULT_CONFIG:    str = "config/pipeline_config.yaml"
 
 def _load_config(config_path: str) -> dict:
     if not os.path.exists(config_path):
+        # Non-fatal: caller may rely on built-in defaults (useful for local runs).
+        print(
+            f"WARNING: config file not found at '{config_path}', "
+            f"falling back to built-in tolerances.",
+            file=sys.stderr,
+        )
         return {}
     with open(config_path, "r", encoding="utf-8") as fh:
         return yaml.safe_load(fh) or {}
@@ -86,6 +106,12 @@ def _align(
     2. Determine shared columns; warn on asymmetric extras.
     3. Sort both frames by SORT_KEY.
     4. Return (py_aligned, r_aligned, shared_cols, warnings).
+
+    Raises
+    ------
+    ValueError
+        If any SORT_KEY column is missing from the shared schema — without
+        a stable sort key, row-wise parity comparison is meaningless.
     """
     warnings: list[str] = []
 
@@ -107,6 +133,14 @@ def _align(
         )
 
     shared = [c for c in py_core.columns if c in r_df.columns]
+
+    missing_sort_keys = [k for k in SORT_KEY if k not in shared]
+    if missing_sort_keys:
+        raise ValueError(
+            f"Sort key column(s) missing from shared schema: {missing_sort_keys}. "
+            f"Shared columns are: {shared}. "
+            f"Cannot verify row-wise parity without a stable sort key."
+        )
 
     def _sort(df: pd.DataFrame) -> pd.DataFrame:
         return (
@@ -224,6 +258,44 @@ def _check_audit_flags(py_df: pd.DataFrame) -> list[str]:
 
 
 # ---------------------------------------------------------------------------
+# Tolerance resolution
+# ---------------------------------------------------------------------------
+
+def _resolve_tolerances(
+    cfg: dict,
+    cli_atol: float | None,
+    cli_rtol: float | None,
+) -> tuple[float, float]:
+    """
+    Resolve (atol, rtol) in most-specific → least-specific order:
+
+      1. CLI --atol / --rtol                         (explicit override)
+      2. config.equivalence_check.atol / .rtol       (preferred key)
+      3. config.numerical_precision.float_tolerance_equivalence  (legacy)
+      4. DEFAULT_ATOL / DEFAULT_RTOL                 (built-in, 1e-5)
+
+    The legacy fallback guarantees that the R pipeline's own tolerance
+    contract is *not* silently loosened to the built-in default when the
+    explicit `equivalence_check` block is absent.
+    """
+    eq_cfg     = cfg.get("equivalence_check", {}) or {}
+    legacy_tol = (cfg.get("numerical_precision", {}) or {}).get(
+        "float_tolerance_equivalence"
+    )
+
+    cfg_atol = eq_cfg.get(
+        "atol", legacy_tol if legacy_tol is not None else DEFAULT_ATOL
+    )
+    cfg_rtol = eq_cfg.get(
+        "rtol", legacy_tol if legacy_tol is not None else DEFAULT_RTOL
+    )
+
+    atol = float(cli_atol) if cli_atol is not None else float(cfg_atol)
+    rtol = float(cli_rtol) if cli_rtol is not None else float(cfg_rtol)
+    return atol, rtol
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
@@ -243,10 +315,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="Relative tolerance override.")
     args = parser.parse_args(argv)
 
-    cfg      = _load_config(args.config)
-    eq_cfg   = cfg.get("equivalence_check", {}) or {}
-    atol     = args.atol if args.atol is not None else float(eq_cfg.get("atol", DEFAULT_ATOL))
-    rtol     = args.rtol if args.rtol is not None else float(eq_cfg.get("rtol", DEFAULT_RTOL))
+    cfg = _load_config(args.config)
+    atol, rtol = _resolve_tolerances(cfg, args.atol, args.rtol)
 
     SEP = "=" * 70
     print(SEP)
@@ -281,7 +351,11 @@ def main(argv: list[str] | None = None) -> int:
             print(msg)
 
     # ---- column alignment ---------------------------------------------------
-    py_aln, r_aln, shared, align_warnings = _align(py_df, r_df)
+    try:
+        py_aln, r_aln, shared, align_warnings = _align(py_df, r_df)
+    except ValueError as exc:
+        print(f"\nERROR: {exc}", file=sys.stderr)
+        return 2
 
     audit_found = [c for c in PYTHON_ONLY_AUDIT_COLUMNS if c in py_df.columns]
     print(f"\n[Column alignment]")

@@ -34,6 +34,19 @@ sdt_parameters:
   fa_adjustment: 0.5
   total_noise_adjustment: 1.0
 
+# Cross-language numerical parity tolerances.
+# Consumed by tests/verify_equivalence.py. The explicit block is the preferred
+# source; the legacy `numerical_precision.float_tolerance_equivalence` key below
+# is kept as a fallback so any external consumer still works.
+#
+# Tightness rationale: R's pipeline docstring targets 1e-5, but we ship at 1e-6
+# to catch silent drift before it reaches the looser docstring ceiling.
+equivalence_check:
+  atol: 1.0e-6
+  rtol: 1.0e-6
+
 numerical_precision:
-  float_tolerance_equivalence: 1e-6
+  # Legacy key — honoured by verify_equivalence.py as a fallback when the
+  # `equivalence_check` block above is absent. Keep in sync with atol/rtol.
+  float_tolerance_equivalence: 1.0e-6
   rounding_decimals_summary: 5

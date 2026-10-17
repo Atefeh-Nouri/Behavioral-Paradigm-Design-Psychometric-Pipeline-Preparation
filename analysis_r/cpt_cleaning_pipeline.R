@@ -125,8 +125,22 @@ cleaned_trials <- cleaned_trials %>% select(all_of(python_col_order))
 # Write Cleaned Trials (Contract 1)
 output_dir_r <- config$io$output_r_dir
 dir.create(output_dir_r, showWarnings = FALSE, recursive = TRUE)
+
+# Parquet side-effect — retained for any R-side/external consumer that prefers it.
 arrow::write_parquet(cleaned_trials,
                      file.path(output_dir_r, "cleaned_trials.parquet"))
+
+# === CROSS-LANGUAGE PARITY CONTRACT (read by tests/verify_equivalence.py) ===
+# The verifier loads *this CSV*, not the parquet above, and expects:
+#   - filename:        cleaned_trials_r.csv
+#   - encoding:        CSV so that _normalise_na() can unify R's "NA"/"N/A"
+#                      string sentinels with Python's NaN.
+#   - sort key:        (participant_id, trial_index_global) is stable.
+# readr::write_csv() writes NA as the literal string "NA" by default, which is
+# exactly the sentinel _normalise_na() is designed to collapse.
+readr::write_csv(cleaned_trials,
+                 file.path(output_dir_r, "cleaned_trials_r.csv"))
+# === END CROSS-LANGUAGE PARITY CONTRACT =====================================
 
 # 5. Subject Summary Generation (Contract 2)
 summarize_subject <- function(subj_df) {
