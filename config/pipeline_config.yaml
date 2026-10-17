@@ -38,9 +38,6 @@ sdt_parameters:
 # Consumed by tests/verify_equivalence.py. The explicit block is the preferred
 # source; the legacy `numerical_precision.float_tolerance_equivalence` key below
 # is kept as a fallback so any external consumer still works.
-#
-# Tightness rationale: R's pipeline docstring targets 1e-5, but we ship at 1e-6
-# to catch silent drift before it reaches the looser docstring ceiling.
 equivalence_check:
   atol: 1.0e-6
   rtol: 1.0e-6
