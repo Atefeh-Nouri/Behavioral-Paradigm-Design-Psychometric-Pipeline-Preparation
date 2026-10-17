@@ -1,0 +1,7 @@
+psychopy>=2023.2.0
+pandas
+numpy
+scipy
+pydantic
+pyyaml
+pytest

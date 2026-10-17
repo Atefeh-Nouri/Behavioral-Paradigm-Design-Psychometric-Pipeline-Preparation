@@ -1,0 +1,71 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# PsychoPy / OpenSesame temporary & log artifacts
+.psychopy/
+*.log
+*.tmp
+.opensesame/
+
+# Data isolation & participant privacy protection
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# R environment & renv local libraries
+analysis_r/renv/library/
+analysis_r/renv/local/
+analysis_r/renv/staging/
+.Rhistory
+.RData
+.Rproj.user/
+
+# IDE & OS files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Added by recovery hygiene patch
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local helper / scratch scripts
+count_files.ps1
+split_export.py
+
+# Local helper / scratch scripts
+count_files.ps1
+split_export.py

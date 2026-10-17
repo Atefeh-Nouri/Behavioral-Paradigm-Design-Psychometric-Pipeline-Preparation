@@ -1,0 +1,20 @@
+compliance_thresholds:
+  min_trials_required: 380
+  max_ax_omission_rate: 0.15
+  max_anticipation_rate: 0.10
+
+cleaning_rules:
+  rt_cutoffs_ms:
+    min: 150.0
+    max: 2000.0
+  mad_filtering:
+    enabled: true
+    threshold_k: 3.0
+    scale_constant: 1.482602218505602
+
+sdt_parameters:
+  correction_method: "hautus_log_linear"
+  hit_adjustment: 0.5
+  total_signal_adjustment: 1.0
+  fa_adjustment: 0.5
+  total_noise_adjustment: 1.0

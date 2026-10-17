@@ -1,0 +1,80 @@
+---
+title: "AX-CPT Psychometric Pipeline Quality Assurance Report"
+subtitle: "Automated Statistical Assertion & Cohort Sanity Verification"
+format:
+  html:
+    toc: true
+    theme: cosmo
+execute:
+  echo: false
+  warning: false
+---
+
+```{r}
+library(readr)
+library(dplyr)
+library(arrow)
+library(knitr)
+
+summaries <- readr::read_csv("../data/processed/r/subject_summaries.csv", show_col_types = FALSE)
+cleaned <- arrow::read_parquet("../data/processed/r/cleaned_trials.parquet")
+```
+
+## 1. Compliance and Attrition Assertions
+
+```{r}
+total_subjects <- nrow(summaries)
+compliant_subjects <- sum(summaries$is_compliant)
+rejected_subjects <- sum(!summaries$is_compliant)
+
+cat(sprintf("Total Cohort Size:    %d\n", total_subjects))
+cat(sprintf("Compliant Subjects:   %d\n", compliant_subjects))
+cat(sprintf("Rejected Subjects:    %d\n", rejected_subjects))
+
+# Formal pipeline assertions
+stopifnot("Cohort size must be exactly 50" = total_subjects == 50)
+stopifnot("Must have exactly 49 compliant subjects" = compliant_subjects == 49)
+stopifnot("Must have exactly 1 rejected subject (SUBJ_050)" = rejected_subjects == 1)
+
+rejected_records <- summaries %>% filter(!is_compliant)
+knitr::kable(
+  rejected_records %>% select(participant_id, n_trials_raw, exclusion_reason, omission_rate_global),
+  caption = "Excluded Cohort Records"
+)
+```
+
+## 2. Data Cleaning Flags Distribution
+
+```{r}
+flag_summary <- cleaned %>%
+  summarize(
+    total_trials = n(),
+    anticipations = sum(flag_anticipation),
+    mad_outliers = sum(flag_mad_outlier),
+    timeouts = sum(flag_timeout_lapse),
+    retained_for_rt = sum(is_retained_for_rt),
+    retained_for_sdt = sum(is_retained_for_sdt)
+  )
+
+knitr::kable(flag_summary, caption = "Global Non-Destructive Trial Audit Counts")
+```
+
+## 3. Condition Effects Sanity Verification
+
+```{r}
+compliant_data <- summaries %>% filter(is_compliant)
+
+mean_conflict_slowing <- mean(compliant_data$conflict_cost_ms)
+mean_wm_decay <- mean(compliant_data$wm_decay_cost_pct)
+mean_hit_rate <- mean(compliant_data$ax_hit_rate)
+mean_dprime_ctx <- mean(compliant_data$dprime_context)
+
+cat(sprintf("Mean Target Hit Rate:     %.2f%%\n", mean_hit_rate * 100))
+cat(sprintf("Mean Context d':          %.2f\n", mean_dprime_ctx))
+cat(sprintf("Mean AY Conflict Slowing: %.2f ms (Target: > 50 ms)\n", mean_conflict_slowing))
+cat(sprintf("Mean BX Delay Error Jump: %.2f%% (Target: > 10%%)\n", mean_wm_decay))
+
+stopifnot("Hit rate must be > 85%" = mean_hit_rate > 0.85)
+stopifnot("Conflict slowing must be positive (>40 ms)" = mean_conflict_slowing > 40.0)
+stopifnot("WM decay must show error increase under delay (>10%)" = mean_wm_decay > 10.0)
+```

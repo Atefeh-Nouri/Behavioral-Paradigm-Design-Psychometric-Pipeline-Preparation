@@ -1,0 +1,153 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RawDataSchemaV1",
+  "description": "Validation schema for AX-CPT trial-level tabular outputs conforming to PSD v1.0.",
+  "type": "object",
+  "required": [
+    "session_id",
+    "participant_id",
+    "block_index",
+    "block_condition",
+    "trial_index_global",
+    "trial_index_block",
+    "trial_type",
+    "cue_stimulus",
+    "probe_stimulus",
+    "required_key",
+    "cpi_nominal_ms",
+    "cpi_realized_ms",
+    "fixation_realized_ms",
+    "probe_onset_timestamp",
+    "response_key",
+    "response_timestamp",
+    "rt_ms",
+    "is_correct",
+    "outcome_code",
+    "is_anticipation",
+    "post_error_trial",
+    "frame_drop_detected"
+  ],
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique session UUIDv4."
+    },
+    "participant_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]+$",
+      "description": "Participant identifier."
+    },
+    "block_index": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 4,
+      "description": "Experimental block sequence index (1 to 4)."
+    },
+    "block_condition": {
+      "type": "string",
+      "enum": ["SHORT_DELAY", "LONG_DELAY"],
+      "description": "Block delay condition."
+    },
+    "trial_index_global": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 400,
+      "description": "Monotonically increasing session trial index."
+    },
+    "trial_index_block": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100,
+      "description": "Trial index within current block."
+    },
+    "trial_type": {
+      "type": "string",
+      "enum": ["AX", "AY", "BX", "BY"],
+      "description": "Factorial trial cell type."
+    },
+    "cue_stimulus": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1,
+      "description": "Uppercase ASCII cue letter."
+    },
+    "probe_stimulus": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1,
+      "description": "Uppercase ASCII probe letter."
+    },
+    "required_key": {
+      "type": "string",
+      "enum": ["space", "l"],
+      "description": "Veridical target response key."
+    },
+    "cpi_nominal_ms": {
+      "type": "number",
+      "enum": [1200.0, 4000.0],
+      "description": "Scheduled cue-probe interval in milliseconds."
+    },
+    "cpi_realized_ms": {
+      "type": "number",
+      "minimum": 1000.0,
+      "maximum": 4500.0,
+      "description": "Measured cue-to-probe vertical blanking onset interval."
+    },
+    "fixation_realized_ms": {
+      "type": "number",
+      "minimum": 350.0,
+      "maximum": 650.0,
+      "description": "Measured fixation duration in milliseconds."
+    },
+    "probe_onset_timestamp": {
+      "type": "number",
+      "minimum": 0.0,
+      "description": "High-precision hardware monotonic timestamp at probe onset."
+    },
+    "response_key": {
+      "type": ["string", "null"],
+      "enum": ["space", "l", null],
+      "description": "Key logged by input device (null on omission)."
+    },
+    "response_timestamp": {
+      "type": ["number", "null"],
+      "minimum": 0.0,
+      "description": "High-precision hardware monotonic timestamp at key event."
+    },
+    "rt_ms": {
+      "type": ["number", "null"],
+      "minimum": 0.0,
+      "maximum": 2000.0,
+      "description": "Reaction time in milliseconds (null on omission)."
+    },
+    "is_correct": {
+      "type": "boolean",
+      "description": "Accuracy evaluated against required_key."
+    },
+    "outcome_code": {
+      "type": "string",
+      "enum": [
+        "HIT",
+        "CORRECT_REJECTION",
+        "COMMISSION_ERROR",
+        "OMISSION_ERROR",
+        "ANTICIPATION"
+      ],
+      "description": "Discrete categorical trial behavioral classification."
+    },
+    "is_anticipation": {
+      "type": "boolean",
+      "description": "True if response RT is strictly below 150.0 ms."
+    },
+    "post_error_trial": {
+      "type": "boolean",
+      "description": "True if the immediately preceding trial resulted in commission or omission."
+    },
+    "frame_drop_detected": {
+      "type": "boolean",
+      "description": "True if any stimulus flip exceeded nominal frame budget by >0.5 frames."
+    }
+  },
+  "additionalProperties": false
+}

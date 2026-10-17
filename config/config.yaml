@@ -1,0 +1,53 @@
+version: "1.0.0"
+experiment_name: "dual_delay_ax_cpt"
+
+environment:
+  screen_number: 0
+  fullscreen: true
+  window_resolution: [1920, 1080]
+  units: "height"
+  target_refresh_hz: 60.0
+  refresh_tolerance_hz: 1.0
+
+hardware:
+  keyboard_backend: "ptb"
+  target_key: "space"
+  non_target_key: "l"
+  abort_key: "escape"
+
+timing:
+  fixation:
+    nominal_ms: 500.0
+    jitter_min_ms: 400.0
+    jitter_max_ms: 600.0
+  stimulus:
+    duration_ms: 300.0
+    frames_at_60hz: 18
+  delays:
+    short_delay_ms: 1200.0
+    short_frames_at_60hz: 72
+    long_delay_ms: 4000.0
+    long_frames_at_60hz: 240
+  response_window_ms: 1000.0
+  iti:
+    nominal_ms: 1200.0
+    jitter_min_ms: 1000.0
+    jitter_max_ms: 1400.0
+  anticipation_threshold_ms: 150.0
+
+design:
+  total_blocks: 4
+  trials_per_block: 100
+  total_experimental_trials: 400
+  block_distribution:
+    ax: 70
+    ay: 10
+    bx: 10
+    by: 10
+  counterbalancing_groups:
+    group_a: ["SHORT_DELAY", "LONG_DELAY", "LONG_DELAY", "SHORT_DELAY"]
+    group_b: ["LONG_DELAY", "SHORT_DELAY", "SHORT_DELAY", "LONG_DELAY"]
+  run_rules:
+    max_consecutive_targets: 4
+    max_consecutive_nontargets: 2
+    no_consecutive_identical_distractors: true

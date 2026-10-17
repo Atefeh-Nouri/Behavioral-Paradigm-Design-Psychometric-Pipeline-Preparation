@@ -1,0 +1,112 @@
+name: Psychometric Pipeline Continuous Integration
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  python-test-suite:
+    name: Python 3.11 Unit Tests & Pipeline Run
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Execute Pytest Suite
+        run: |
+          pytest tests/test_pipeline.py tests/test_sdt.py tests/test_config.py tests/test_trial_generator.py tests/test_logger_schema.py -v --durations=10
+
+      - name: Generate Synthetic Benchmark Data
+        run: |
+          python synthetic_data/generate_benchmark.py --config config/config.yaml --seed 2026
+
+      - name: Run Python Psychometric Processing Pipeline
+        run: |
+          python analysis_python/cpt_pipeline.py --config config/pipeline_config.yaml
+
+      - name: Upload Python Processed Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-processed-data
+          path: data/processed/python/
+          retention-days: 1
+
+  r-pipeline-check:
+    name: R 4.4 Tidyverse Pipeline Run & QA
+    needs: [python-test-suite]
+    runs-on: ubuntu-latest
+    container: rocker/tidyverse:4.4.0
+    steps:
+      - name: Checkout Code Repository
+        uses: actions/checkout@v4
+
+      - name: Install System Libraries for Arrow
+        run: |
+          apt-get update && apt-get install -y libcurl4-openssl-dev libssl-dev libxml2-dev
+
+      - name: Install Required R Packages
+        run: |
+          Rscript -e "install.packages(c('yaml', 'arrow', 'quarto'))"
+
+      - name: Run Synthetic Benchmark Generator (Python via System)
+        run: |
+          apt-get install -y python3-pip python3-pandas python3-numpy python3-yaml
+          python3 synthetic_data/generate_benchmark.py --config config/config.yaml --seed 2026
+
+      - name: Execute R Cleaning and Scoring Pipeline
+        run: |
+          Rscript analysis_r/cpt_cleaning_pipeline.R
+
+      - name: Upload R Processed Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: r-processed-data
+          path: data/processed/r/
+          retention-days: 1
+
+  cross-language-equivalence:
+    name: Cross-Language Numerical Parity Verification
+    needs: [python-test-suite, r-pipeline-check]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python Parity Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas pyarrow pyyaml scipy
+
+      - name: Download Python Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: python-processed-data
+          path: data/processed/python/
+
+      - name: Download R Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: r-processed-data
+          path: data/processed/r/
+
+      - name: Run Cross-Language Equivalence Audit
+        run: |
+          python tests/verify_equivalence.py

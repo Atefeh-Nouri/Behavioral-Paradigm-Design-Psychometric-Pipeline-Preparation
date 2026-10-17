@@ -1,0 +1,2 @@
+# Preserves data/processed directory structure under Git tracking.
+# Processed parquet tables and per-subject summary CSVs are generated via pipelines.
