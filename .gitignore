@@ -69,3 +69,4 @@ split_export.py
 # Local helper / scratch scripts
 count_files.ps1
 split_export.py
+equivalence_report.txt

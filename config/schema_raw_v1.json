@@ -1,5 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cognarch.local/schemas/raw-data-v1.json",
   "title": "RawDataSchemaV1",
   "description": "Validation schema for AX-CPT trial-level tabular outputs conforming to PSD v1.0.",
   "type": "object",
@@ -98,7 +99,7 @@
       "type": "number",
       "minimum": 350.0,
       "maximum": 650.0,
-      "description": "Measured fixation duration in milliseconds."
+      "description": "Measured fixation duration in milliseconds. Bounds are intentionally wider than the 400-600 ms config jitter to accommodate timing variance without dropping trials at ingestion."
     },
     "probe_onset_timestamp": {
       "type": "number",
@@ -113,13 +114,13 @@
     "response_timestamp": {
       "type": ["number", "null"],
       "minimum": 0.0,
-      "description": "High-precision hardware monotonic timestamp at key event."
+      "description": "High-precision hardware monotonic timestamp at key event (null on omission)."
     },
     "rt_ms": {
       "type": ["number", "null"],
       "minimum": 0.0,
       "maximum": 2000.0,
-      "description": "Reaction time in milliseconds (null on omission)."
+      "description": "Reaction time in milliseconds (null on omission). Sub-150 ms values are permitted here; anticipation flagging is handled downstream by clean.py via flag_anticipation."
     },
     "is_correct": {
       "type": "boolean",
