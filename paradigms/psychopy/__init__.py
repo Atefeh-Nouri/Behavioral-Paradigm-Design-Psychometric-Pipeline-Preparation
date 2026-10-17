@@ -1,49 +1,49 @@
-"""AX-CPT PsychoPy Coder Implementation Package.
+"""
+AX-CPT PsychoPy Coder Implementation Package.
 
 Provides frame-accurate stimulus timing, low-latency keyboard polling,
 rejection-sampled trial sequencing, and Raw Data Schema v1.0 logging.
 
-Note: Heavy hardware/GUI imports (PsychopyEngine, etc.) are wrapped in try/except
-to allow lightweight unit testing (e.g., Logger, TrialLogic) in environments
-where PsychoPy/PsychToolbox is not installed (like GitHub Actions CI).
+Submodules are loaded lazily (PEP 562) so that pure-Python helpers —
+``config_loader``, ``trial_logic``, ``logger`` — can be imported in
+headless CI environments where ``psychopy`` is not installed. Attributes
+that genuinely require ``psychopy`` (``engine``, ``trial_executor``,
+``ui``) raise ``ImportError`` only on first access, with the same message
+a direct submodule import would produce. Public API is unchanged.
 """
 
-# Always import pure-Python logic components first
-from .config_loader import load_experiment_config
-from .trial_logic import TrialSequenceGenerator, TrialDefinition
-from .logger import SessionDataLogger, SchemaValidationError
+from importlib import import_module
+from typing import Any
 
 __version__ = "1.0.0"
 
-# Conditional imports for Hardware/GUI components
-# These require 'psychopy' which may not be present in CI test environments
-try:
-    from .engine import PsychopyEngine, EngineClockManager, FrameDropEvent
-    from .trial_executor import TrialExecutor, TrialResult
-    from .ui import UIManager, PracticeManager
-    
-    # Update __all__ if hardware modules are available
-    __all__ = [
-        "load_experiment_config",
-        "TrialSequenceGenerator",
-        "TrialDefinition",
-        "SessionDataLogger",
-        "SchemaValidationError",
-        "PsychopyEngine",
-        "EngineClockManager",
-        "FrameDropEvent",
-        "TrialExecutor",
-        "TrialResult",
-        "UIManager",
-        "PracticeManager",
-    ]
-except ImportError:
-    # If psychopy is missing, we still expose the pure-logic components
-    # This allows tests like test_logger_schema.py to pass
-    __all__ = [
-        "load_experiment_config",
-        "TrialSequenceGenerator",
-        "TrialDefinition",
-        "SessionDataLogger",
-        "SchemaValidationError",
-    ]
+# name -> (submodule, attribute_in_submodule)
+_LAZY_ATTRS = {
+    "load_experiment_config": (".config_loader", "load_experiment_config"),
+    "PsychopyEngine":         (".engine",         "PsychopyEngine"),
+    "EngineClockManager":     (".engine",         "EngineClockManager"),
+    "FrameDropEvent":         (".engine",         "FrameDropEvent"),
+    "TrialSequenceGenerator": (".trial_logic",    "TrialSequenceGenerator"),
+    "TrialDefinition":        (".trial_logic",    "TrialDefinition"),
+    "TrialExecutor":          (".trial_executor", "TrialExecutor"),
+    "TrialResult":            (".trial_executor", "TrialResult"),
+    "UIManager":              (".ui",             "UIManager"),
+    "PracticeManager":        (".ui",             "PracticeManager"),
+    "SessionDataLogger":      (".logger",         "SessionDataLogger"),
+    "SchemaValidationError":  (".logger",         "SchemaValidationError"),
+}
+
+__all__ = sorted(_LAZY_ATTRS) + ["__version__"]
+
+
+def __getattr__(name: str) -> Any:
+    """Resolve ``paradigms.psychopy.<name>`` lazily on first access."""
+    if name in _LAZY_ATTRS:
+        submodule, attr = _LAZY_ATTRS[name]
+        module = import_module(submodule, __name__)
+        return getattr(module, attr)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__() -> list[str]:
+    return sorted(__all__)
