@@ -1,13 +1,26 @@
-# Core Scientific Stack
+# ==============================================================================
+# requirements-ci.txt
+# Minimal headless Python dependency set for GitHub Actions CI.
+#
+# Excluded intentionally (do NOT add these):
+#   - psychopy / psychtoolbox : require a display server; cannot install headless
+#   - matplotlib               : only used by diagnostic plot scripts, not CI-tested
+#   - pandas/numpy/scipy/scikit-*  : covered by the scientific stack below
+#
+# Version pins mirror requirements.txt exactly for the packages that overlap,
+# to guarantee that CI runs what the developer runs locally.
+# ==============================================================================
+
+# Core scientific stack
 numpy==1.26.4
 scipy==1.13.0
 pandas==2.2.2
 pyarrow==16.0.0
 
-# Configuration & Validation
+# Configuration & validation
 pyyaml==6.0.1
 pydantic==2.7.1
-jsonschema==4.21.1
+jsonschema==4.26.0
 
-# Testing Framework
+# Testing framework
 pytest==8.2.0
