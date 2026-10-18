@@ -29,7 +29,7 @@ However, relying purely on subjective rating scales limits quantitative assessme
 
 To validate the psychometric pipelines prior to empirical data collection, a hierarchical Monte Carlo simulator was used to generate a 20,000-trial synthetic benchmark. The diagnostic plots below confirm that the generated data accurately reproduces target cognitive phenomena:
 
-![Benchmark Validation Diagnostics](data/raw/benchmark_validation_diagnostics.png)
+![Benchmark Validation Diagnostics](docs/assets/benchmark_validation_diagnostics.png)
 
 *   **Top-Left:** Conflict Slowing (AY responses are slower than AX responses).
 *   **Top-Right:** Latent Tau Recovery (Strong correlation between true and observed attentional lapses).
