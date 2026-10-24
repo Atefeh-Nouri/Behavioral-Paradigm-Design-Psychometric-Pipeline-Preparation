@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 120" width="100%" height="100%">
+  <rect width="100%" height="100%" fill="#0d1117" rx="10"/>
+  <text x="400" y="35" fill="#ffffff" font-family="Arial, sans-serif" font-size="18" font-weight="bold" text-anchor="middle">Core Technologies &amp; Languages</text>
+  
+  <g transform="translate(100, 60)">
+    <!-- Python -->
+    <rect x="0" y="0" width="100" height="30" rx="15" fill="#3776AB"/>
+    <text x="50" y="20" fill="#ffffff" font-family="Arial, sans-serif" font-size="14" text-anchor="middle">Python</text>
+    
+    <!-- R -->
+    <rect x="120" y="0" width="100" height="30" rx="15" fill="#276DC3"/>
+    <text x="170" y="20" fill="#ffffff" font-family="Arial, sans-serif" font-size="14" text-anchor="middle">R</text>
+    
+    <!-- PsychoPy -->
+    <rect x="240" y="0" width="100" height="30" rx="15" fill="#F58220"/>
+    <text x="290" y="20" fill="#ffffff" font-family="Arial, sans-serif" font-size="14" text-anchor="middle">PsychoPy</text>
+    
+    <!-- OpenSesame -->
+    <rect x="360" y="0" width="120" height="30" rx="15" fill="#2E8B57"/>
+    <text x="420" y="20" fill="#ffffff" font-family="Arial, sans-serif" font-size="14" text-anchor="middle">OpenSesame</text>
+    
+    <!-- Quarto -->
+    <rect x="500" y="0" width="100" height="30" rx="15" fill="#75AADB"/>
+    <text x="550" y="20" fill="#ffffff" font-family="Arial, sans-serif" font-size="14" text-anchor="middle">Quarto</text>
+  </g>
+</svg>

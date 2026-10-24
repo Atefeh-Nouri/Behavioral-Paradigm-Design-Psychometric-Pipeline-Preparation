@@ -65,10 +65,6 @@ Thumbs.db
 # Local helper / scratch scripts
 count_files.ps1
 split_export.py
-
-# Local helper / scratch scripts
-count_files.ps1
-split_export.py
 equivalence_report.txt
 
 # ==============================================================================
@@ -79,7 +75,9 @@ include/
 share/
 lib/
 
-# Generated Quarto/Markdown render outputs (track the .qmd source, not the build)
-reports/
+# Generated Quarto/Markdown render outputs (DO NOT ignore the whole reports/ folder, just the build outputs)
 *.html
 *.pdf
+
+# Ignore generated test and equivalence logs
+reports/*.txt

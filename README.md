@@ -1,6 +1,8 @@
 # Behavioral Paradigm Design & Psychometric Pipeline Preparation
 ### Dual-Delay AX-CPT Research Platform (Deliverables D1–D10)
 
+![Tech Stack](reports/tech_stack.svg)
+
 > **Status:** RESEARCH-USE PROTOTYPE — Synthetic validation complete; cross-language parity verified on shared psychometric columns; empirical pilot pending.
 >
 > **Quality Assurance:** 25/25 Pytest Unit Tests Passed | Cross-Language Equivalence Verified
@@ -51,8 +53,7 @@ However, relying purely on subjective rating scales limits quantitative assessme
 │   └── 📁 raw
 ├── 📁 docs
 │   ├── 📁 assets
-│   │   ├── 🖼️ benchmark_validation_diagnostics.png
-│   │   └── 🖼️ verification_stack.svg
+│   │   └── 🖼️ benchmark_validation_diagnostics.png
 │   ├── 📝 01_construct_definition_matrix.md
 │   ├── 📝 02_literature_synthesis_matrix_a.md
 │   ├── 📝 03_experimental_design.md
@@ -101,7 +102,9 @@ However, relying purely on subjective rating scales limits quantitative assessme
 │       ├── 🐍 trial_logic.py
 │       └── 🐍 ui.py
 ├── 📁 reports
-│   └── 🐍 make_combined_svg.py
+│   ├── 🐍 make_combined_svg.py
+│   ├── 🖼️ verification.svg
+│   └── 🖼️ verification_stack.svg
 ├── 📁 synthetic_data
 │   ├── 🐍 __init__.py
 │   ├── 🐍 generate_benchmark.py
@@ -152,7 +155,6 @@ However, relying purely on subjective rating scales limits quantitative assessme
 
 ### 📝 `docs/` (30-Day Methodological Documentation Suite)
 *   **`assets/benchmark_validation_diagnostics.png`**: Visual proof of Ex-Gaussian tails and parameter recovery.
-*   **`assets/verification_stack.svg`**: Terminal-style verification badge summarizing the 35-test stack.
 *   **`01` to `05`**: Construct definitions, literature synthesis, experimental design, timing state-machines, and the frozen PSD v1.0.
 *   **`06` to `12`**: Repository scaffolding, PsychoPy/OpenSesame engine specs, logging contracts, QA protocols, and pilot triage trees.
 *   **`13` to `18`**: Synthetic data model specs, anomaly manifests, benchmark freeze reports, and data dictionaries.
@@ -173,6 +175,8 @@ However, relying purely on subjective rating scales limits quantitative assessme
 
 ### 📊 `reports/`
 *   **`make_combined_svg.py`**: Utility script to generate rich-terminal SVG verification badges.
+*   **`verification.svg`**: Terminal-style verification badge.
+*   **`verification_stack.svg`**: Full verification stack summary badge.
 
 ### 🎲 `synthetic_data/` (Deliverable D5: Monte Carlo Generator)
 *   **`__init__.py`**: Package initialization.
@@ -215,9 +219,11 @@ To validate the psychometric pipelines prior to empirical data collection, a hie
 
 ## 🏆 Verification Stack (35 Tests Passed)
 
-![Verification Stack](docs/assets/verification_stack.svg)
+![Verification Stack](reports/verification_stack.svg)
 
-> **Fallback (if the SVG does not render in your environment):**
+![Verification](reports/verification.svg)
+
+> **Fallback (if the SVGs do not render in your environment):**
 >
 > ```
 > $ pytest tests/ -v
@@ -304,5 +310,21 @@ This software repository is engineered solely for quantitative cognitive systems
 2. **No Autonomous Decision-Making**: The architecture strictly prohibits autonomous clinical scoring. All metrics represent descriptive psychometric estimates designed for human-in-the-loop analysis with mandatory display of 95% Bayesian Highest Density Intervals (HDI).
 3. **Data Privacy**: Keystroke-level timing logs constitute sensitive behavioral data. All data stores must utilize pseudonymous UUIDs with personal identifiers stored in an isolated identity vault.
 ```
+*(Note: The file ends exactly here. No extra backticks, no extra dashes).*
 
----
+### Step 3: Save as UTF-8 (Crucial)
+If you copy-paste this into VS Code, the characters will still break if VS Code saves it in Windows-1251. 
+Do this to save it correctly:
+1. Open `README.md` in VS Code.
+2. Click on the encoding text in the bottom right corner (it probably says `Windows-1251` or `UTF-8 with BOM`).
+3. Select **"Save with Encoding"**.
+4. Choose **UTF-8**.
+5. Save the file.
+
+### Step 4: Push to Git
+Run these exact commands in your terminal:
+```bash
+git add README.md reports/tech_stack.svg reports/verification.svg reports/verification_stack.svg
+git commit -m "docs: fix README encoding, paths, and add tech stack SVG"
+git push
+```
