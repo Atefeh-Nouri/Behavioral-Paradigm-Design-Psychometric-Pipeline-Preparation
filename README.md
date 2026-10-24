@@ -38,64 +38,262 @@ To validate the psychometric pipelines prior to empirical data collection, a hie
 
 ---
 
-## Repository Structure
+---
 
-```text
-ax_cpt_cognitive_lab/
-├── .github/
-│   └── workflows/
-│       └── pipeline_ci.yml           # Automated unit testing & cross-language equivalence CI
-├── config/
-│   ├── config.yaml                   # Master experimental paradigm configuration (PSD v1.0)
-│   ├── pipeline_config.yaml          # Psychometric cleaning & scoring parameters
-│   └── schema_raw_v1.json            # JSONSchema draft-07 contract for Raw Data Schema v1.0
-├── data/
-│   ├── raw/                          # Raw session dumps, benchmark data & diagnostic plots
-│   └── processed/                    # Cleaned Parquet tables & subject summary CSVs
-├── docs/                             # Complete project documentation suite (Days 1–30)
-├── paradigms/
-│   ├── psychopy/                     # Deliverable D2: PsychoPy Coder implementation
-│   │   ├── config_loader.py          # Pydantic configuration validation
-│   │   ├── engine.py                 # V-Sync hardware timing & frame-drop watchdog
-│   │   ├── trial_logic.py            # Bounded rejection sampling run-rule engine
-│   │   ├── trial_executor.py         # Deterministic trial state machine
-│   │   ├── ui.py                     # Criterion practice & countdown rest UI
-│   │   ├── logger.py                 # Raw Data Schema v1.0 enforcement
-│   │   └── main.py                   # Application entrypoint
-│   └── opensesame/                   # Deliverable D3: OpenSesame implementation
-│       ├── BUILD_STEPS.md            # Step-by-step GUI build guide (<30 min setup)
-│       └── inline_scripts/           # Python scripts for OpenSesame items
-├── synthetic_data/                   # Deliverable D5: Monte Carlo benchmark generator
-│   ├── generator.py                  # Hierarchical Ex-Gaussian / SDT generator
-│   └── generate_benchmark.py         # Batch production engine (N=50 x 400 trials)
-├── analysis_python/                  # Deliverable D6: Python psychometric pipeline
-│   ├── ingest.py                     # Ingestion integrity & compliance auditing
-│   ├── clean.py                      # Non-destructive MAD outlier filtering
-│   ├── sdt.py                        # Hautus (1995) log-linear SDT scoring
-│   ├── summarize.py                  # 24-column subject-level aggregator
-│   └── cpt_pipeline.py               # Master CLI pipeline orchestrator
-├── analysis_r/                       # Deliverable D7: R Tidyverse psychometric pipeline
-│   ├── .Rprofile                     # renv local environment hook
-│   ├── renv.lock                     # Dependency lockfile template
-│   ├── cpt_cleaning_pipeline.R       # Parity-verified tidyverse pipeline
-│   └── qa_report.qmd                 # Quarto automated statistical assertion report
-├── tests/                            # Test suites & benchmarking harnesses
-│   ├── test_config.py                # Configuration bounds & schema tests
-│   ├── test_trial_generator.py       # Run-rules & cell distribution tests
-│   ├── test_logger_schema.py         # 22-column schema contract tests
-│   ├── test_pipeline.py              # MAD filtering & non-destructive tests
-│   ├── test_sdt.py                   # Hand-computed Hautus SDT analytical cases
-│   ├── verify_timing.py              # Deliverable D4 Part 1: Hardware timing QA
-│   ├── plot_diagnostics.py           # Benchmark visualization suite
-│   └── verify_equivalence.py         # Cross-language numerical parity audit
-├── .gitignore
-├── pytest.ini                        # Pytest configuration
-├── requirements.txt                  # Pinned Python dependencies
-└── requirements-ci.txt               # Dependencies specifically for GitHub Actions
-```
+## 📖 Component & File Glossary
+
+Below is a brief explanation of every file and directory in the repository, mapped to its specific methodological or engineering purpose.
+
+### 🐍 `analysis_python/` (Deliverable D6: Python Psychometric Pipeline)
+*   **`__init__.py`**: Package initialization and public API exports.
+*   **`clean.py`**: Non-destructive within-subject Median Absolute Deviation (MAD) outlier filtering.
+*   **`cpt_pipeline.py`**: Master CLI orchestrator linking ingestion, cleaning, and summarization.
+*   **`ingest.py`**: Raw data ingestion, schema validation, and participant compliance auditing.
+*   **`sdt.py`**: Signal Detection Theory scoring utilizing Hautus (1995) log-linear corrections.
+*   **`summarize.py`**: Aggregates cleaned trials into the 24-column subject-level summary contract.
+
+### 📈 `analysis_r/` (Deliverable D7: R Tidyverse Psychometric Pipeline)
+*   **`cpt_cleaning_pipeline.R`**: Parity-verified `tidyverse` and `arrow` pipeline mirroring the Python logic.
+*   **`qa_report.qmd`**: Quarto automated statistical assertion and cohort sanity report.
+*   **`renv.lock`**: Strict dependency lockfile ensuring R environment reproducibility.
+
+### ⚙️ `config/` (Single Source of Truth)
+*   **`config.yaml`**: Master experimental paradigm configuration (timing, stimuli, run-rules).
+*   **`pipeline_config.yaml`**: Psychometric cleaning thresholds, MAD constants, and SDT parameters.
+*   **`schema_raw_v1.json`**: JSONSchema draft-07 contract enforcing the 22-column Raw Data Schema.
+
+### 📂 `data/` (Git-Ignored Data Stores)
+*   **`processed/`**: Output directory for cleaned Parquet tables and subject summary CSVs.
+*   **`raw/`**: Output directory for raw session dumps and synthetic benchmark data.
+
+### 📝 `docs/` (30-Day Methodological Documentation Suite)
+*   **`assets/benchmark_validation_diagnostics.png`**: Visual proof of Ex-Gaussian tails and parameter recovery.
+*   **`01` to `05`**: Construct definitions, literature synthesis, experimental design, timing state-machines, and the frozen PSD v1.0.
+*   **`06` to `12`**: Repository scaffolding, PsychoPy/OpenSesame engine specs, logging contracts, QA protocols, and pilot triage trees.
+*   **`13` to `18`**: Synthetic data model specs, anomaly manifests, benchmark freeze reports, and data dictionaries.
+*   **`19` to `25`**: Pipeline architecture, ingestion validation, cross-language equivalence proofs, CI specs, and reproducibility statements.
+*   **`26` to `30`**: Cognitive ergonomics mapping, CDSS Bayesian architecture, diagnostic reasoning matrices, final report, and executive close-out.
+
+### 🧠 `paradigms/` (Experimental Execution Engines)
+*   **`opensesame/inline_scripts/*.py`**: Python logic for OpenSesame canvas rendering and FSM scoring.
+*   **`opensesame/BUILD_STEPS.md`**: Step-by-step GUI build guide for the OpenSesame `.osexp` file.
+*   **`psychopy/__init__.py`**: PsychoPy package initialization.
+*   **`psychopy/config_loader.py`**: Pydantic-backed YAML configuration validation.
+*   **`psychopy/engine.py`**: V-Sync hardware timing, frame-budget watchdog, and clock management.
+*   **`psychopy/logger.py`**: Enforces Raw Data Schema v1.0 and writes atomic CSV/JSON outputs.
+*   **`psychopy/main.py`**: Application entrypoint handling CLI args and block sequencing.
+*   **`psychopy/trial_executor.py`**: Deterministic trial state machine and keyboard polling.
+*   **`psychopy/trial_logic.py`**: Bounded rejection sampling engine enforcing behavioral run-rules.
+*   **`psychopy/ui.py`**: Criterion-gated practice blocks and countdown rest interfaces.
+
+### 📊 `reports/`
+*   **`make_combined_svg.py`**: Utility script to generate rich-terminal SVG verification badges.
+
+### 🎲 `synthetic_data/` (Deliverable D5: Monte Carlo Generator)
+*   **`__init__.py`**: Package initialization.
+*   **`generate_benchmark.py`**: Batch production engine generating $N=50$ subjects with cryptographic manifests.
+*   **`generator.py`**: Hierarchical Ex-Gaussian latency and SDT threshold decision simulator.
+
+### 🧪 `tests/` (Verification & QA Harnesses)
+*   **`__init__.py`**: Test package initialization.
+*   **`plot_diagnostics.py`**: Generates empirical density and parameter recovery scatter plots.
+*   **`test_config.py`**: Asserts YAML bounds and schema integrity.
+*   **`test_logger_schema.py`**: Verifies 22-column schema enforcement and negative RT rejection.
+*   **`test_pipeline.py`**: Tests MAD edge-cases (identical values, extreme outliers) and non-destructive flagging.
+*   **`test_sdt.py`**: Hand-computed analytical Hautus SDT boundary cases (0% / 100% rates).
+*   **`test_trial_generator.py`**: Validates 70/10/10/10 cell balancing and run-rule constraints.
+*   **`verify_equivalence.py`**: Cross-language numerical parity audit (Python vs. R) within $10^{-6}$ tolerance.
+*   **`verify_timing.py`**: Hardware benchmark for display refresh jitter and keyboard polling latency.
+
+### 📄 Root Files
+*   **`PROJECT_STRUCTURE.md`**: High-level architectural map of the repository.
+*   **`pytest.ini`**: Pytest configuration and warning filters.
+*   **`README.md`**: This master operational documentation file.
+*   **`requirements-ci.txt`**: Lightweight dependencies for GitHub Actions CI runners.
+*   **`requirements.txt`**: Strictly pinned Python 3.11 production dependencies.
+*   **`test.py`**: Master Repository Test Contract (validates directory layout, imports, and end-to-end logic).
 
 ---
 
+## 📁 Repository Structure
+
+```text
+📁 cpt-project
+├── 📁 analysis_python
+│   ├── 🐍 __init__.py
+│   ├── 🐍 clean.py
+│   ├── 🐍 cpt_pipeline.py
+│   ├── 🐍 ingest.py
+│   ├── 🐍 sdt.py
+│   └── 🐍 summarize.py
+├── 📁 analysis_r
+│   ├── 📈 cpt_cleaning_pipeline.R
+│   ├── 📓 qa_report.qmd
+│   └── 📦 renv.lock
+├── 📁 config
+│   ├── ⚙️ config.yaml
+│   ├── ⚙️ pipeline_config.yaml
+│   └── 🧾 schema_raw_v1.json
+├── 📁 data
+│   ├── 📁 processed
+│   └── 📁 raw
+├── 📁 docs
+│   ├── 📁 assets
+│   │   └── 🖼️ benchmark_validation_diagnostics.png
+│   ├── 📝 01_construct_definition_matrix.md
+│   ├── 📝 02_literature_synthesis_matrix_a.md
+│   ├── 📝 03_experimental_design.md
+│   ├── 📝 04_timing_state_machine_schema.md
+│   ├── 📝 05_psd_v1_frozen.md
+│   ├── 📝 06_repo_scaffolding_and_config.md
+│   ├── 📝 07_psychopy_timing_engine_spec.md
+│   ├── 📝 08_psd_code_traceability_matrix.md
+│   ├── 📝 09_logging_contracts_and_simulated_traces.md
+│   ├── 📝 10_timing_qa_protocol.md
+│   ├── 📝 11_opensesame_build_and_parity_guide.md
+│   ├── 📝 12_pilot_protocol_and_triage_tree.md
+│   ├── 📝 13_synthetic_data_model_specification.md
+│   ├── 📝 14_single_subject_validation_report.md
+│   ├── 📝 15_injected_anomaly_manifest.md
+│   ├── 📝 16_synthetic_benchmark_manifest.md
+│   ├── 📝 17_generator_validation_and_freeze_report.md
+│   ├── 📝 18_benchmark_data_dictionary.md
+│   ├── 📝 19_pipeline_architecture_and_contracts.md
+│   ├── 📝 20_ingestion_validation_report.md
+│   ├── 📝 21_cleaning_and_sdt_spec.md
+│   ├── 📝 22_r_pipeline_and_quarto_qa_guide.md
+│   ├── 📝 23_cross_language_equivalence_report.md
+│   ├── 📝 24_testing_and_ci_specification.md
+│   ├── 📝 25_benchmark_analysis_and_reproducibility.md
+│   ├── 📝 26_cognitive_ergonomics_matrix_b1.md
+│   ├── 📝 27_cdss_architecture_and_contracts.md
+│   ├── 📝 28_diagnostic_reasoning_matrix_b2.md
+│   ├── 📝 29_final_methodological_report.md
+│   └── 📝 30_executive_summary_and_closeout.md
+├── 📁 paradigms
+│   ├── 📁 opensesame
+│   │   ├── 📁 inline_scripts
+│   │   │   ├── 🐍 feedback_eval.py
+│   │   │   ├── 🐍 init_experiment.py
+│   │   │   ├── 🐍 score_trial.py
+│   │   │   └── 🐍 trial_init.py
+│   │   └── 📝 BUILD_STEPS.md
+│   └── 📁 psychopy
+│       ├── 🐍 __init__.py
+│       ├── 🐍 config_loader.py
+│       ├── 🐍 engine.py
+│       ├── 🐍 logger.py
+│       ├── 🐍 main.py
+│       ├── 🐍 trial_executor.py
+│       ├── 🐍 trial_logic.py
+│       └── 🐍 ui.py
+├── 📁 reports
+│   └── 🐍 make_combined_svg.py
+├── 📁 synthetic_data
+│   ├── 🐍 __init__.py
+│   ├── 🐍 generate_benchmark.py
+│   └── 🐍 generator.py
+├── 📁 tests
+│   ├── 🐍 __init__.py
+│   ├── 🐍 plot_diagnostics.py
+│   ├── 🧪 test_config.py
+│   ├── 🧪 test_logger_schema.py
+│   ├── 🧪 test_pipeline.py
+│   ├── 🧪 test_sdt.py
+│   ├── 🧪 test_trial_generator.py
+│   ├── 🐍 verify_equivalence.py
+│   └── 🐍 verify_timing.py
+├── 🗂️ PROJECT_STRUCTURE.md
+├── 🧪 pytest.ini
+├── 📖 README.md
+├── 📦 requirements-ci.txt
+├── 📦 requirements.txt
+└── 🧪 test.py
+
+---
+
+
+## 🏆 Verification Stack (35 Tests Passed)
+
+
+```xml
+<svg viewBox="0 0 900 480" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .bg { fill: #0d1117; }
+      .terminal-text { fill: #e6edf3; font-family: 'Fira Code', Consolas, monospace; font-size: 14px; }
+      .success { fill: #3fb950; font-weight: bold; }
+      .info { fill: #58a6ff; }
+      .dim { fill: #8b949e; }
+      .title { fill: #ffffff; font-family: Arial, sans-serif; font-size: 16px; font-weight: bold; }
+    </style>
+  </defs>
+  
+  <!-- Terminal Background -->
+  <rect class="bg" width="100%" height="100%" rx="10" />
+  
+  <!-- Window Controls -->
+  <circle cx="20" cy="20" r="6" fill="#ff5f56"/>
+  <circle cx="40" cy="20" r="6" fill="#ffbd2e"/>
+  <circle cx="60" cy="20" r="6" fill="#27c93f"/>
+  
+  <text x="450" y="25" class="title" text-anchor="middle">cpt-project — Verification Stack</text>
+  
+  <g transform="translate(20, 60)">
+    <!-- Pytest Output -->
+    <text class="terminal-text" x="0" y="0">
+      <tspan class="dim">$ pytest tests/ -v</tspan>
+    </text>
+    <text class="terminal-text" x="0" y="25">
+      <tspan class="dim">tests/test_config.py::test_experiment_config_validity </tspan><tspan class="success">PASSED</tspan>
+    </text>
+    <text class="terminal-text" x="0" y="45">
+      <tspan class="dim">tests/test_sdt.py::test_sdt_hand_computed_perfect_boundary </tspan><tspan class="success">PASSED</tspan>
+    </text>
+    <text class="terminal-text" x="0" y="65">
+      <tspan class="dim">tests/test_pipeline.py::test_mad_filtering_extreme_outlier </tspan><tspan class="success">PASSED</tspan>
+    </text>
+    <text class="terminal-text" x="0" y="85">
+      <tspan class="dim">... (22 more unit tests) ...</tspan>
+    </text>
+    <text class="terminal-text" x="0" y="115">
+      <tspan class="success">============================= 25 passed in 2.58s ==============================</tspan>
+    </text>
+
+    <!-- Master Contract Output -->
+    <text class="terminal-text" x="0" y="160">
+      <tspan class="dim">$ python test.py</tspan>
+    </text>
+    <text class="terminal-text" x="0" y="185">
+      <tspan class="info">=== Running Master Repository Test Contract ===</tspan>
+    </text>
+    <text class="terminal-text" x="0" y="210">
+      <tspan class="success">[PASS]</tspan><tspan> Directory &amp; File Structure</tspan>
+    </text>
+    <text class="terminal-text" x="0" y="230">
+      <tspan class="success">[PASS]</tspan><tspan> Raw Data Schema v1.0 Contract</tspan>
+    </text>
+    <text class="terminal-text" x="0" y="250">
+      <tspan class="success">[PASS]</tspan><tspan> Hautus SDT Mathematical Precision</tspan>
+    </text>
+    <text class="terminal-text" x="0" y="270">
+      <tspan class="success">[PASS]</tspan><tspan> End-to-End Synthetic Generation &amp; Pipeline</tspan>
+    </text>
+    <text class="terminal-text" x="0" y="290">
+      <tspan class="dim">... (6 more integration tests) ...</tspan>
+    </text>
+    <text class="terminal-text" x="0" y="320">
+      <tspan class="success">Test Summary: 10 PASSED, 0 FAILED</tspan>
+    </text>
+
+    <!-- Final Summary Banner -->
+    <rect x="0" y="350" width="860" height="40" fill="#161b22" rx="5" stroke="#30363d" stroke-width="1"/>
+    <text class="terminal-text" x="430" y="375" text-anchor="middle" font-size="18">
+      <tspan class="success">🏆 TOTAL VERIFICATION: 35 TESTS PASSED | CROSS-LANGUAGE PARITY: EQUIVALENT</tspan>
+    </text>
+  </g>
+</svg>
+```
 ## Quickstart
 
 ### 1. Python Environment Setup

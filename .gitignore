@@ -70,3 +70,16 @@ split_export.py
 count_files.ps1
 split_export.py
 equivalence_report.txt
+
+# ==============================================================================
+# Local Environment Pollution & Build Artifacts
+# ==============================================================================
+# Misplaced venv/pip architecture directories in project root
+include/
+share/
+lib/
+
+# Generated Quarto/Markdown render outputs (track the .qmd source, not the build)
+reports/
+*.html
+*.pdf
