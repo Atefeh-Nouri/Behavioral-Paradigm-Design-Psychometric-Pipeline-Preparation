@@ -217,6 +217,7 @@ To validate the psychometric pipelines prior to empirical data collection, a hie
 
 ![Verification Stack](docs/assets/verification_stack.svg)
 
+> **Fallback (if the SVG does not render in your environment):**
 >
 > ```
 > $ pytest tests/ -v
@@ -303,3 +304,5 @@ This software repository is engineered solely for quantitative cognitive systems
 2. **No Autonomous Decision-Making**: The architecture strictly prohibits autonomous clinical scoring. All metrics represent descriptive psychometric estimates designed for human-in-the-loop analysis with mandatory display of 95% Bayesian Highest Density Intervals (HDI).
 3. **Data Privacy**: Keystroke-level timing logs constitute sensitive behavioral data. All data stores must utilize pseudonymous UUIDs with personal identifiers stored in an isolated identity vault.
 ```
+
+---
